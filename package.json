@@ -36,6 +36,7 @@
     "echarts": "^5.5.0",
     "echarts-for-react": "^3.0.2",
     "echarts-gl": "^2.0.9",
+    "immer": "^8.0.1",
     "jquery": "^3.7.0",
     "lodash-es": "^4.17.21",
     "normalize.css": "^8.0.1",

@@ -356,7 +356,6 @@ export default function App() {
                 let plotOptions = customConfig.plotOptions as any
                 setConfig(config)
                 setPlotOptions(plotOptions)
-                console.log('init view func')
             }
             initView()
         }
