@@ -24,11 +24,12 @@ interface IFormValues {
     tableId: any;
     dataRange: any;
     rotateSensitivity: number;
-    autoRotate: boolean;
+    autoRotate: string;
     shadowSwitch: boolean;
     tooltipSwitch: boolean;
     gridSwitch: boolean;
-
+    visualMapSwitch: boolean;
+    visualMapShowSwitch: boolean;
     backgroundColor: string;
 }
 
@@ -53,7 +54,12 @@ export default function App() {
     const [plotOptions, setPlotOptions] = useState({
         tooltip: { show: false },
         visualMap: {
+            show: true,
             max: 20,
+            calculable: true,
+            realtime: true,
+            itemWidth: 25,
+            itemHeight: 300,
             inRange: {
                 color: [
                     '#313695',
@@ -86,7 +92,8 @@ export default function App() {
             boxDepth: 80,
             viewControl: {
                 projection: 'perspective',//'orthographic',
-                rotateSensitivity: 15
+                rotateSensitivity: 15,
+                autoRotateAfterStill: 1
             },
             light: {
                 main: {
@@ -97,7 +104,7 @@ export default function App() {
                     intensity: 0.3
                 }
             },
-
+            environment: null,
         },
         series: [
             {
@@ -259,7 +266,8 @@ export default function App() {
                 //console.log(y_index)
 
                 let xyz_data = []
-
+                let maxValue = -Infinity; // 初始化为负无穷大
+                let minValue = Infinity; // 初始化为正无穷大
                 //x_index.forEach(async (x_item, x_index) => {
                 //    const field = await table.getFieldById(x_item.id)
                 //    y_index.forEach(async (y_item, y_index) => {
@@ -275,13 +283,18 @@ export default function App() {
                                 return cell.getValue().then(cellContent => {
                                     let a = [x_index, y_index, cellContent];
                                     xyz_data.push(a);
+                                    if (cellContent > maxValue) { maxValue = cellContent }
+                                    if (cellContent < minValue) { minValue = cellContent }
                                 });
                             });
                         }));
                     });
                 })).then(() => {
                     //console.log(xyz_data);
+                    //console.log(maxValue, minValue)
                     setPlotOptions(produce((draft) => {
+                        draft.visualMap.max = maxValue + maxValue * 0.1
+                        draft.visualMap.min = minValue - minValue * 0.1
                         draft.series[0].data = xyz_data
                         draft.xAxis3D.data = x_index_name
                         draft.yAxis3D.data = y_index_name
@@ -294,11 +307,12 @@ export default function App() {
                     tableId: tableList[0]?.tableId,
                     dataRange: tableRanges[0],
                     rotateSensitivity: 15,
-                    autoRotate: false,
+                    autoRotate: 'off',
                     shadowSwitch: false,
                     tooltipSwitch: false,
                     gridSwitch: true,
-
+                    visualMapSwitch: true,
+                    visualMapShowSwitch: true,
                     backgroundColor: 'transparent'
                 }
                 setConfig((prevConfig) => ({
@@ -333,12 +347,16 @@ export default function App() {
                     dataRange: typeof (dataRange) === 'string' ?
                         (JSON.parse(dataRange)) : (dataRange),
                     rotateSensitivity: plotOptions.grid3D.viewControl.rotateSensitivity,
-                    autoRotate: plotOptions.grid3D.viewControl.autoRotate,
+                    autoRotate: plotOptions.grid3D.viewControl.autoRotate === false ?
+                        ('off') : (plotOptions.grid3D.viewControl.autoRotate),
                     shadowSwitch: plotOptions.grid3D.light.main.shadow,
                     tooltipSwitch: plotOptions.tooltip.show,
                     gridSwitch: plotOptions.grid3D.show,
-
-                    //backgroundColor: 'transparent'
+                    visualMapSwitch: (plotOptions.visualMap.inRange.color).length === 1 ? (false) : (true),
+                    visualMapShowSwitch: plotOptions.visualMap.show,
+                    backgroundColor: plotOptions.grid3D.environment !== null ?
+                        (plotOptions.grid3D.environment === '#000' ? ('black') : ('example')) :
+                        ('transparent')
                 }
             }
             setInitFormValue(formInitValue)
@@ -475,10 +493,17 @@ export default function App() {
             setPlotOptions(produce((draft) => {
                 draft.grid3D.viewControl.rotateSensitivity = changedField.rotateSensitivity
             }))
-        } else if (changedField.autoRotate === true || changedField.autoRotate === false) {
-            setPlotOptions(produce((draft) => {
-                draft.grid3D.viewControl.autoRotate = changedField.autoRotate
-            }))
+        } else if (changedField.autoRotate) {
+            if (changedField.autoRotate === 'off') {
+                setPlotOptions(produce((draft) => {
+                    draft.grid3D.viewControl.autoRotate = false
+                }))
+            } else {
+                setPlotOptions(produce((draft) => {
+                    draft.grid3D.viewControl.autoRotate = true
+                    draft.grid3D.viewControl.autoRotateDirection = changedField.autoRotate
+                }))
+            }
         } else if (changedField.shadowSwitch === true || changedField.shadowSwitch === false) {
             setPlotOptions(produce((draft) => {
                 draft.grid3D.light.main.shadow = changedField.shadowSwitch
@@ -492,27 +517,31 @@ export default function App() {
                 draft.grid3D.show = changedField.gridSwitch
             }))
         } else if (changedField.visualMapSwitch === true || changedField.visualMapSwitch === false) {
+            //console.log(plotOptions.series[0].data)
             setPlotOptions(produce((draft) => {
                 changedField.visualMapSwitch === false ?
-                    (draft.visualMap = null) :
-                    (draft.visualMap = {
-                        max: 20,
-                        inRange: {
-                            color: [
-                                '#313695',
-                                '#4575b4',
-                                '#74add1',
-                                '#abd9e9',
-                                '#e0f3f8',
-                                '#ffffbf',
-                                '#fee090',
-                                '#fdae61',
-                                '#f46d43',
-                                '#d73027',
-                                '#a50026'
-                            ]
-                        }
+                    (draft.visualMap.inRange = {
+                        color: ['#454AAf']
+                    }) :
+                    (draft.visualMap.inRange = {
+                        color: [
+                            '#313695',
+                            '#4575b4',
+                            '#74add1',
+                            '#abd9e9',
+                            '#e0f3f8',
+                            '#ffffbf',
+                            '#fee090',
+                            '#fdae61',
+                            '#f46d43',
+                            '#d73027',
+                            '#a50026'
+                        ]
                     })
+            }))
+        } else if (changedField.visualMapShowSwitch === true || changedField.visualMapShowSwitch === false) {
+            setPlotOptions(produce((draft) => {
+                draft.visualMap.show = changedField.visualMapShowSwitch
             }))
         } else if (changedField.backgroundColor) {
             if (changedField.backgroundColor === 'black') {
@@ -528,6 +557,10 @@ export default function App() {
                     }, {
                         offset: 1, color: '#998866' // 地面颜色
                     }], false)
+                }))
+            } if (changedField.backgroundColor === 'transparent') {
+                setPlotOptions(produce((draft) => {
+                    draft.grid3D.environment = null
                 }))
             }
 
@@ -635,9 +668,20 @@ export default function App() {
                                     {dataRange.map(view => renderCustomOption_tableSVG_dataRange(view))}
                                 </Form.Select>
 
-                                <Divider margin='12px'></Divider>
+                                <Divider margin='12px' align='center' style={{ fontSize: '12px', opacity: 0.6 }}>基础控制</Divider>
 
-                                <Divider margin='12px'></Divider>
+                                <Form.Select
+                                    dropdownClassName={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}
+                                    dropdownStyle={{ backgroundColor: 'var(--semi-color-bg-2)' }}
+                                    field='backgroundColor'
+                                    label='图表背景'
+                                    initValue={initFormValue.backgroundColor}
+                                    style={{ width: '100%' }}
+                                >
+                                    <Select.Option value={'transparent'}>透明</Select.Option>
+                                    <Select.Option value={'black'}>黑色</Select.Option>
+                                    <Select.Option value={'example'}>示例颜色</Select.Option>
+                                </Form.Select>
                                 <Form.Slider
                                     field='rotateSensitivity'
                                     label='鼠标旋转灵敏度'
@@ -646,42 +690,64 @@ export default function App() {
                                     showBoundary={true}
                                     handleDot={[{ size: '10px', color: 'blue' }]}
                                 ></Form.Slider>
-                                <Form.Switch
-                                    field='autoRotate'
-                                    label='自动旋转'
-                                    initValue={initFormValue.autoRotate}
-                                ></Form.Switch>
-                                <Form.Switch
-                                    field='shadowSwitch'
-                                    label='阴影'
-                                    initValue={initFormValue.shadowSwitch}
-                                ></Form.Switch>
-                                <Form.Switch
-                                    field='tooltipSwitch'
-                                    label='提示框显示'
-                                    initValue={initFormValue.tooltipSwitch}                                ></Form.Switch>
-                                <Form.Switch
-                                    field='gridSwitch'
-                                    label='坐标轴显示'
-                                    initValue={initFormValue.gridSwitch}                                ></Form.Switch>
-                                <Form.Switch
-                                    field='visualMapSwitch'
-                                    label='数值映射'
-                                    initValue={true}
-                                    disabled
-                                ></Form.Switch>
-                                <Form.Select
-                                    dropdownClassName={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}
-                                    dropdownStyle={{ backgroundColor: 'var(--semi-color-bg-2)' }}
-                                    field='backgroundColor'
-                                    label='图表背景颜色'
-                                    initValue={initFormValue.backgroundColor}
-                                    style={{ width: '100%' }}
-                                >
-                                    <Select.Option value={'transparent'}>透明无色</Select.Option>
-                                    <Select.Option value={'black'}>黑色</Select.Option>
-                                    <Select.Option value={'example'}>示例颜色</Select.Option>
-                                </Form.Select>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+                                    <div style={{ width: '50%' }}>
+                                        <Form.Switch
+                                            field='shadowSwitch'
+                                            label='阴影'
+                                            initValue={initFormValue.shadowSwitch}
+                                        ></Form.Switch>
+                                    </div>
+                                    <div style={{ width: '50%' }}>
+                                        <Form.Select
+                                            field='autoRotate'
+                                            label='自动旋转'
+                                            initValue={initFormValue.autoRotate}
+                                        >
+                                            <Select.Option value={'off'}>关闭</Select.Option>
+                                            <Select.Option value={'cw'}>向右旋转</Select.Option>
+                                            <Select.Option value={'ccw'}>向左旋转</Select.Option>
+                                        </Form.Select>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+                                    <div style={{ width: '50%' }}>
+                                        <Form.Switch
+                                            field='tooltipSwitch'
+                                            label='提示框显示'
+                                            initValue={initFormValue.tooltipSwitch}
+                                        ></Form.Switch>
+                                    </div>
+                                    <div style={{ width: '50%' }}>
+                                        <Form.Switch
+                                            field='gridSwitch'
+                                            label='坐标轴显示'
+                                            initValue={initFormValue.gridSwitch}
+                                        ></Form.Switch>
+                                    </div>
+                                </div>
+
+                                <Divider margin='12px' align='center' style={{ fontSize: '12px', opacity: 0.6 }}>数据映射</Divider>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
+                                    <div style={{ width: '50%' }}>
+                                        <Form.Switch
+                                            field='visualMapShowSwitch'
+                                            label='数值映射条显示'
+                                            initValue={initFormValue.visualMapShowSwitch}
+                                        ></Form.Switch>
+                                    </div>
+                                    <div style={{ width: '50%' }}>
+                                        <Form.Switch
+                                            field='visualMapSwitch'
+                                            label='数值颜色映射'
+                                            initValue={initFormValue.visualMapSwitch}
+                                        ></Form.Switch>
+                                    </div>
+                                </div>
+
+
+
                                 {/*<Form.Slot
                                     label='投影方式'
                                 >
