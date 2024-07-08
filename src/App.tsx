@@ -88,6 +88,7 @@ export default function App() {
             type: 'value'
         },
         grid3D: {
+            show: true,
             boxWidth: 200,
             boxDepth: 80,
             viewControl: {
