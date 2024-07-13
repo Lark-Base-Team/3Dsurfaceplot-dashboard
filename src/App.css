@@ -1,15 +1,15 @@
 .chart-app {
-  height: 100%;
-  display: flex;
-  flex-direction: row;
+    height: 100%;
+    display: flex;
+    flex-direction: row;
 }
 
 .radar-chart {
-  box-sizing: border-box;
-  margin: 1.5rem;
-  height: 100%;
-  /* width: 400px; */
-  flex: 1;
+    box-sizing: border-box;
+    margin: 1.5rem;
+    height: 100%;
+    /* width: 400px; */
+    flex: 1;
 }
 
 @import "reset-css";
@@ -50,6 +50,24 @@ html {
     border-left: rgba(222, 224, 227, 0.15) 1px solid;
     padding: 20px;
     box-sizing: border-box;
+    margin-right: 1px;
+}
+
+.config-panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.config-panel::-webkit-scrollbar-track {
+    background: #ffffff00;
+}
+
+.config-panel::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb-bg, #BBBDBE);
+    border-radius: 10px;
+}
+
+.config-panel::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover-bg, #797B7F);
 }
 
 .form {
@@ -60,6 +78,39 @@ html {
     margin-bottom: 16px;
     color: var(--text-title);
 }
+
+.form-select {
+    background-color: var(--semi-color-bg-2);
+    border-radius: 6px;
+    border: 1px solid gray;
+
+}
+
+.semi-select-option-list {
+    margin-right: 3px;
+}
+
+.semi-select-option-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.semi-select-option-list::-webkit-scrollbar-track {
+    background: #ffffff00;
+}
+
+.semi-select-option-list::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb-bg, #BBBDBE);
+    border-radius: 10px;
+}
+
+.semi-select-option-list::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover-bg, #797B7F);
+}
+
+.childSelect:focus{
+    border-color: #ffffff00;
+}
+
 
 .ant-picker {
     width: 100%;
