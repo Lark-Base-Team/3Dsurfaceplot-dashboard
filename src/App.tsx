@@ -233,13 +233,16 @@ export default function App() {
                     }
                 }
                 setCategories(visibleFieldMeta)
-                
+
                 const adjustableFormList = visibleFieldMeta
                     .filter((item, index) => index !== 0)
+                    .filter((item, index) =>
+                        item.fieldType === 2 ||
+                        item.fieldType === 99002 ||
+                        item.fieldType === 99004
+                    )
                     .map((item, index) => {
-                        if (item.fieldType === 2) {
-                            return { ...item, calcu: 'MAX' }
-                        }
+                        return { ...item, calcu: 'MAX' }
                     })
                 //console.log('adjustableFormList', adjustableFormList)
                 setAdjustableForm(adjustableFormList)
@@ -361,7 +364,7 @@ export default function App() {
             init()
         } else if (dashboard.state === DashboardState.View) {
             // only after create
-            
+
             async function initView() {
                 const dbConfig = await dashboard.getConfig();
                 const { customConfig, dataConditions } = dbConfig
@@ -684,7 +687,7 @@ export default function App() {
                 iconPath = './date.svg'; // 设置日期图标路径
                 break;
             case FieldType.Checkbox:
-                iconPath = ''; // 设置复选框图标路径
+                iconPath = './checkbox.svg'; // 设置复选框图标路径
                 break;
             case FieldType.User:
                 iconPath = './person.svg'; // 设置人员图标路径
@@ -697,6 +700,15 @@ export default function App() {
                 break;
             case FieldType.Email:
                 iconPath = './Email.svg'; // 设置電子郵件图标路径
+                break;
+            case FieldType.Progress:
+                iconPath = './progress.svg'; // 设置进度条图标路径
+                break;
+            case FieldType.Currency:
+                iconPath = './currency.svg'; // 设置货币图标路径
+                break;
+            case FieldType.Rating:
+                iconPath = './rating.svg'; // 设置评分图标路径
                 break;
             default:
                 iconPath = ''; // 默认图标路径或处理
@@ -715,7 +727,6 @@ export default function App() {
             </Select.Option>
         )
     };
-
     const addFieldButtonClick = (fieldId) => {
         //console.log(fieldId)
         for (let field of categories) {
@@ -939,8 +950,12 @@ export default function App() {
                                                                 style={{ display: 'flex', width: '190px', marginLeft: '10px', borderColor: '#ffffff00' }}
 
                                                             >
-                                                                {categories.map(field => field.fieldType === FieldType.Number ?
-                                                                    (renderCustomOption_col(field)) : (null))}
+                                                                {categories.map(field =>
+                                                                    field.fieldType === FieldType.Number ||
+                                                                        field.fieldType === FieldType.Progress ||
+                                                                        field.fieldType === FieldType.Rating
+                                                                        ?
+                                                                        (renderCustomOption_col(field)) : (null))}
                                                             </Select>
                                                         }
                                                         suffix={
@@ -1025,8 +1040,12 @@ export default function App() {
                                                     onChange={addFieldButtonClick}
 
                                                 >
-                                                    {categories.map(field => field.fieldType === FieldType.Number ?
-                                                        (renderCustomOption_col(field)) : (null))}
+                                                    {categories.map(field =>
+                                                        field.fieldType === FieldType.Number ||
+                                                            field.fieldType === FieldType.Progress ||
+                                                            field.fieldType === FieldType.Rating
+                                                            ?
+                                                            (renderCustomOption_col(field)) : (null))}
                                                 </Select>
                                             </Tooltip>
                                         </div>
