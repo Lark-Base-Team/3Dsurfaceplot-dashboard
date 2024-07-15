@@ -63,18 +63,18 @@ const visualMapColorList = [
     }, {
         index: '1',
         colors: [
-            '#00ff00',
-            '#33ff33',
-            '#66ff66',
-            '#99ff99',
-            '#ccffcc',
-            '#ffffff',
-            '#ffccff',
-            '#ff99ff',
-            '#ff66ff',
-            '#ff33ff',
-            '#800080'
-        ]
+            '#8b0000', // 深红色
+            '#a01010',
+            '#b42626',
+            '#c83c3c',
+            '#dc5252',
+            '#e6e6fa',
+            '#5252dc',
+            '#3c3cc8',
+            '#2626b4',
+            '#1010a0',
+            '#00008b'  // 深蓝色
+          ]                   
     }, {
         index: '2',
         colors: [
@@ -115,7 +115,7 @@ const visualMapColorList = [
             '#e4cbe5',
             '#ecd7ea',
             '#f4e2f0',
-            '#f0f5e5', // 中间值，近似白色
+            '#ffffff', // 中间值，近似白色
             '#f5e7d5',
             '#f1d8c6',
             '#edc9b7',
@@ -445,7 +445,7 @@ export default function App() {
                     shadowSwitch: plotOptions.grid3D.light.main.shadow,
                     tooltipSwitch: plotOptions.tooltip.show,
                     gridSwitch: plotOptions.grid3D.show,
-                    visualMapColor: String(visualMapColorList.findIndex((colors, index) => colors === plotOptions.visualMap.inRange.color)),
+                    visualMapColor: String(visualMapColorList.findIndex((obj, index) => obj.colors === plotOptions.visualMap.inRange.color)),
                     visualMapSwitch: (plotOptions.visualMap.inRange.color).length === 1 ? (false) : (true),
                     visualMapShowSwitch: plotOptions.visualMap.show,
                     visualMapItemHeight: plotOptions.visualMap.itemHeight,
