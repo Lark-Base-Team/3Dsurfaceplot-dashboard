@@ -28,11 +28,14 @@ interface IFormValues {
     y_axis: any;
     rotateSensitivity: number;
     autoRotate: string;
+    autoRotateSpeed: number;
     shadowSwitch: boolean;
     tooltipSwitch: boolean;
     gridSwitch: boolean;
+    visualMapColor: string;
     visualMapSwitch: boolean;
     visualMapShowSwitch: boolean;
+    visualMapItemHeight: number;
     backgroundColor: string;
 }
 
@@ -41,6 +44,88 @@ interface ITableSource {
     tableName: string;
 }
 
+const visualMapColorList = [
+    {
+        index: '0',
+        colors: [
+            '#313695',
+            '#4575b4',
+            '#74add1',
+            '#abd9e9',
+            '#e0f3f8',
+            '#ffffbf',
+            '#fee090',
+            '#fdae61',
+            '#f46d43',
+            '#d73027',
+            '#a50026'
+        ]
+    }, {
+        index: '1',
+        colors: [
+            '#00ff00',
+            '#33ff33',
+            '#66ff66',
+            '#99ff99',
+            '#ccffcc',
+            '#ffffff',
+            '#ffccff',
+            '#ff99ff',
+            '#ff66ff',
+            '#ff33ff',
+            '#800080'
+        ]
+    }, {
+        index: '2',
+        colors: [
+            '#ffff00',
+            '#ffff33',
+            '#ffff66',
+            '#ffff99',
+            '#ffffcc',
+            '#ffffbf',
+            '#ccccff',
+            '#9999ff',
+            '#6666ff',
+            '#3333ff',
+            '#0000ff'
+        ]
+    },
+    {
+        index: '3',
+        colors: [
+            '#a8d5ba',
+            '#b7ddc6',
+            '#c6e4d1',
+            '#d5eccd',
+            '#e4f3d9',
+            '#f0f5e5', // 中间值，近似白色
+            '#e4f3f8',
+            '#d5e8f5',
+            '#c6ddf1',
+            '#b7d1ee',
+            '#a8c6ea'
+        ]
+    },
+    {
+        index: '4',
+        colors: [
+            '#d4b4da',
+            '#dcc0e0',
+            '#e4cbe5',
+            '#ecd7ea',
+            '#f4e2f0',
+            '#f0f5e5', // 中间值，近似白色
+            '#f5e7d5',
+            '#f1d8c6',
+            '#edc9b7',
+            '#e9baa8',
+            '#e5ab99'
+        ]
+
+    }
+]
+
 export default function App() {
     const { Title } = Typography;
     const formRef = useRef(null);
@@ -48,7 +133,7 @@ export default function App() {
     const [tableSource, setTableSource] = useState<ITableSource[]>([]);
     const [dataRange, setDataRange] = useState<IDataRange[]>([{ type: SourceType.ALL }]);
     const [categories, setCategories] = useState<ICategory[]>([]);
-
+    const [autoRotateState, setAutoRotateState] = useState('off')
     const [pageTheme, setPageTheme] = useState('LIGHT');
     const [config, setConfig] = useState({
         tableId: '',
@@ -100,7 +185,8 @@ export default function App() {
                 projection: 'perspective',//'orthographic',
                 autoRotate: false,
                 rotateSensitivity: 15,
-                autoRotateAfterStill: 1
+                autoRotateAfterStill: 1,
+                autoRotateSpeed: 10,
             },
             light: {
                 main: {
@@ -112,6 +198,7 @@ export default function App() {
                 }
             },
             environment: null,
+            axisLine: { lineStyle: { color: '#000' } },
         },
         series: [
             {
@@ -187,6 +274,9 @@ export default function App() {
             const theme = await bitable.bridge.getTheme();
             //console.log('addon detect theme changed', theme)
             setPageTheme(theme);
+            setPlotOptions(produce((draft) => {
+                theme === 'LIGHT' ? (draft.grid3D.axisLine.lineStyle.color = '#000') : (draft.grid3D.axisLine.lineStyle.color = '#fff')
+            }))
         }
         a()
     }, [dashboard.state])
@@ -238,7 +328,9 @@ export default function App() {
                     .filter((item, index) => index !== 0)
                     .filter((item, index) =>
                         item.fieldType === 2 ||
+                        item.fieldType === 20 ||
                         item.fieldType === 99002 ||
+                        item.fieldType === 99003 ||
                         item.fieldType === 99004
                     )
                     .map((item, index) => {
@@ -299,11 +391,14 @@ export default function App() {
                     y_axis: visibleFieldMeta[0]?.fieldId,
                     rotateSensitivity: 15,
                     autoRotate: 'off',
+                    autoRotateSpeed: 10,
                     shadowSwitch: false,
                     tooltipSwitch: false,
                     gridSwitch: true,
+                    visualMapColor: '0',
                     visualMapSwitch: true,
                     visualMapShowSwitch: true,
+                    visualMapItemHeight: 300,
                     backgroundColor: 'transparent'
                 }
                 setConfig((prevConfig) => ({
@@ -346,11 +441,14 @@ export default function App() {
                     rotateSensitivity: plotOptions.grid3D.viewControl.rotateSensitivity,
                     autoRotate: plotOptions.grid3D.viewControl.autoRotate === false ?
                         ('off') : (plotOptions.grid3D.viewControl.autoRotateDirection),
+                    autoRotateSpeed: plotOptions.grid3D.viewControl.autoRotateSpeed,
                     shadowSwitch: plotOptions.grid3D.light.main.shadow,
                     tooltipSwitch: plotOptions.tooltip.show,
                     gridSwitch: plotOptions.grid3D.show,
+                    visualMapColor: String(visualMapColorList.findIndex((colors, index) => colors === plotOptions.visualMap.inRange.color)),
                     visualMapSwitch: (plotOptions.visualMap.inRange.color).length === 1 ? (false) : (true),
                     visualMapShowSwitch: plotOptions.visualMap.show,
+                    visualMapItemHeight: plotOptions.visualMap.itemHeight,
                     backgroundColor: plotOptions.grid3D.environment !== null ?
                         (plotOptions.grid3D.environment === '#000' ? ('black') : ('example')) :
                         ('transparent')
@@ -555,6 +653,7 @@ export default function App() {
                 draft.grid3D.viewControl.rotateSensitivity = changedField.rotateSensitivity
             }))
         } else if (changedField.autoRotate) {
+            setAutoRotateState(changedField.autoRotate)
             if (changedField.autoRotate === 'off') {
                 setPlotOptions(produce((draft) => {
                     draft.grid3D.viewControl.autoRotate = false
@@ -565,6 +664,10 @@ export default function App() {
                     draft.grid3D.viewControl.autoRotateDirection = changedField.autoRotate
                 }))
             }
+        } else if (changedField.autoRotateSpeed) {
+            setPlotOptions(produce((draft) => {
+                draft.grid3D.viewControl.autoRotateSpeed = changedField.autoRotateSpeed
+            }))
         } else if (changedField.shadowSwitch === true || changedField.shadowSwitch === false) {
             setPlotOptions(produce((draft) => {
                 draft.grid3D.light.main.shadow = changedField.shadowSwitch
@@ -576,6 +679,10 @@ export default function App() {
         } else if (changedField.gridSwitch === true || changedField.gridSwitch === false) {
             setPlotOptions(produce((draft) => {
                 draft.grid3D.show = changedField.gridSwitch
+            }))
+        } else if (changedField.visualMapColor) {
+            setPlotOptions(produce((draft) => {
+                draft.visualMap.inRange.color = visualMapColorList[Number(changedField.visualMapColor)].colors
             }))
         } else if (changedField.visualMapSwitch === true || changedField.visualMapSwitch === false) {
             //console.log(plotOptions.series[0].data)
@@ -603,6 +710,10 @@ export default function App() {
         } else if (changedField.visualMapShowSwitch === true || changedField.visualMapShowSwitch === false) {
             setPlotOptions(produce((draft) => {
                 draft.visualMap.show = changedField.visualMapShowSwitch
+            }))
+        } else if (changedField.visualMapItemHeight) {
+            setPlotOptions(produce((draft) => {
+                draft.visualMap.itemHeight = changedField.visualMapItemHeight
             }))
         } else if (changedField.backgroundColor) {
             if (changedField.backgroundColor === 'black') {
@@ -709,6 +820,9 @@ export default function App() {
                 break;
             case FieldType.Rating:
                 iconPath = './rating.svg'; // 设置评分图标路径
+                break;
+            case FieldType.Formula:
+                iconPath = './formula.svg'; // 设置公式图标路径
                 break;
             default:
                 iconPath = ''; // 默认图标路径或处理
@@ -952,7 +1066,9 @@ export default function App() {
                                                             >
                                                                 {categories.map(field =>
                                                                     field.fieldType === FieldType.Number ||
+                                                                        field.fieldType === FieldType.Formula ||
                                                                         field.fieldType === FieldType.Progress ||
+                                                                        field.fieldType === FieldType.Currency ||
                                                                         field.fieldType === FieldType.Rating
                                                                         ?
                                                                         (renderCustomOption_col(field)) : (null))}
@@ -1042,7 +1158,9 @@ export default function App() {
                                                 >
                                                     {categories.map(field =>
                                                         field.fieldType === FieldType.Number ||
+                                                            field.fieldType === FieldType.Formula ||
                                                             field.fieldType === FieldType.Progress ||
+                                                            field.fieldType === FieldType.Currency ||
                                                             field.fieldType === FieldType.Rating
                                                             ?
                                                             (renderCustomOption_col(field)) : (null))}
@@ -1077,7 +1195,16 @@ export default function App() {
                                         >
                                             <Select.Option value={'transparent'}>透明</Select.Option>
                                             <Select.Option value={'black'}>黑色</Select.Option>
-                                            <Select.Option value={'example'}>示例颜色</Select.Option>
+                                            <Select.Option
+                                                value={'example'}
+                                                label={
+                                                    <div style={{ display: 'flex', borderRadius: '3px', overflow: 'hidden' }}>
+                                                        {['#00aaff', '#998866'].map((color, index) => (
+                                                            <div key={index} style={{ backgroundColor: color, height: '15px', width: '20px' }} />
+                                                        ))}
+                                                    </div>
+                                                }
+                                            >示例颜色</Select.Option>
                                         </Form.Select>
                                         <Form.Slider
                                             field='rotateSensitivity'
@@ -1085,7 +1212,7 @@ export default function App() {
                                             initValue={initFormValue.rotateSensitivity}
                                             max={30}
                                             showBoundary={true}
-                                            handleDot={[{ size: '10px', color: 'blue' }]}
+                                            handleDot={{ size: '10px', color: 'lightblue' } as any}
                                         ></Form.Slider>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
                                             <div style={{ width: '50%' }}>
@@ -1109,6 +1236,18 @@ export default function App() {
                                                 </Form.Select>
                                             </div>
                                         </div>
+                                        {autoRotateState !== 'off' ? (
+                                            <Form.Slider
+                                                field='autoRotateSpeed'
+                                                label='自动旋转速度'
+                                                initValue={initFormValue.autoRotateSpeed}
+                                                min={1}
+                                                max={90}
+                                                showBoundary={true}
+                                                tipFormatter={v => (`${v}°/s`)}
+                                                handleDot={{ size: '10px', color: 'lightblue' } as any}
+                                            ></Form.Slider>
+                                        ) : (null)}
                                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
                                             <div style={{ width: '50%' }}>
                                                 <Form.Switch
@@ -1130,6 +1269,28 @@ export default function App() {
                                             <div style={{ fontSize: '12px', fontWeight: 'bold', opacity: 0.6 }}>数据映射</div>
                                         </Divider>
 
+                                        <Form.Select
+                                            dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                            field='visualMapColor'
+                                            label='映射颜色'
+                                            initValue={'0'}
+                                            style={{ width: '100%' }}
+                                            clickToHide
+                                        >
+                                            {visualMapColorList.map((obj) =>
+                                                <Select.Option
+                                                    value={obj.index}
+                                                    label={
+                                                        <div style={{ display: 'flex', borderRadius: '3px', overflow: 'hidden' }}>
+                                                            {obj.colors.map((color) => (
+                                                                <div style={{ backgroundColor: color, height: '15px', width: '20px' }} />
+                                                            ))}
+                                                        </div>
+                                                    }
+                                                ></Select.Option>
+                                            )}
+                                        </Form.Select>
+
                                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
                                             <div style={{ width: '50%' }}>
                                                 <Form.Switch
@@ -1146,7 +1307,17 @@ export default function App() {
                                                 ></Form.Switch>
                                             </div>
                                         </div>
-
+                                        {plotOptions.visualMap.show ? (
+                                            <Form.Slider
+                                                field='visualMapItemHeight'
+                                                label='控制条高度'
+                                                initValue={initFormValue.visualMapItemHeight}
+                                                min={0}
+                                                max={600}
+                                                showBoundary={true}
+                                                handleDot={{ size: '10px', color: 'lightblue' } as any}
+                                            ></Form.Slider>
+                                        ) : (null)}
 
 
                                         {/*<Form.Slot
