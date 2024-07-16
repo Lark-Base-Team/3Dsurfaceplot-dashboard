@@ -45,5 +45,6 @@
     "react-plotly.js": "^2.6.0",
     "styled-components": "^6.0.5",
     "vite-plugin-semi-theming": "^0.1.0"
-  }
+  },
+  "output": "dist"
 }
