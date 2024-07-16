@@ -74,7 +74,7 @@ const visualMapColorList = [
             '#2626b4',
             '#1010a0',
             '#00008b'  // 深蓝色
-          ]                   
+        ]
     }, {
         index: '2',
         colors: [
@@ -445,7 +445,7 @@ export default function App() {
                     shadowSwitch: plotOptions.grid3D.light.main.shadow,
                     tooltipSwitch: plotOptions.tooltip.show,
                     gridSwitch: plotOptions.grid3D.show,
-                    visualMapColor: String(visualMapColorList.findIndex((obj, index) => obj.colors === plotOptions.visualMap.inRange.color)),
+                    visualMapColor: String(visualMapColorList.findIndex((obj, index) => JSON.stringify(obj.colors) === JSON.stringify(plotOptions.visualMap.inRange.color))),
                     visualMapSwitch: (plotOptions.visualMap.inRange.color).length === 1 ? (false) : (true),
                     visualMapShowSwitch: plotOptions.visualMap.show,
                     visualMapItemHeight: plotOptions.visualMap.itemHeight,
@@ -1199,9 +1199,7 @@ export default function App() {
                                                 value={'example'}
                                                 label={
                                                     <div style={{ display: 'flex', borderRadius: '3px', overflow: 'hidden' }}>
-                                                        {['#00aaff', '#998866'].map((color, index) => (
-                                                            <div key={index} style={{ backgroundColor: color, height: '15px', width: '20px' }} />
-                                                        ))}
+                                                        <div style={{ height: '15px', width: '220px', background: 'linear-gradient(to right, #00aaff 0%, #998866 100%)' }}></div>
                                                     </div>
                                                 }
                                             >示例颜色</Select.Option>
@@ -1273,7 +1271,7 @@ export default function App() {
                                             dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                             field='visualMapColor'
                                             label='映射颜色'
-                                            initValue={'0'}
+                                            initValue={initFormValue.visualMapColor}
                                             style={{ width: '100%' }}
                                             clickToHide
                                         >
