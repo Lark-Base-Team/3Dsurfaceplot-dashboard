@@ -30,6 +30,7 @@ interface IFormValues {
     autoRotate: string;
     autoRotateSpeed: number;
     shadowSwitch: boolean;
+    splitArea: boolean;
     tooltipSwitch: boolean;
     gridSwitch: boolean;
     visualMapColor: string;
@@ -202,6 +203,7 @@ export default function App() {
             },
             environment: null,
             axisLine: { lineStyle: { color: '#000' } },
+            splitArea: { show: false },
         },
         series: [
             {
@@ -357,13 +359,7 @@ export default function App() {
 
                 const adjustableFormList = visibleFieldMeta
                     .filter((item, index) => index !== 0)
-                    .filter((item, index) =>
-                        item.fieldType === 2 ||
-                        item.fieldType === 20 ||
-                        item.fieldType === 99002 ||
-                        item.fieldType === 99003 ||
-                        item.fieldType === 99004
-                    )
+                    .filter((item, index) => supportedFieldType.includes(item.fieldType))
                     .map((item, index) => {
                         return { ...item, calcu: 'MAX' }
                     })
@@ -429,6 +425,7 @@ export default function App() {
                     autoRotate: 'off',
                     autoRotateSpeed: 10,
                     shadowSwitch: false,
+                    splitArea: false,
                     tooltipSwitch: false,
                     gridSwitch: true,
                     visualMapColor: '0',
@@ -479,6 +476,7 @@ export default function App() {
                         ('off') : (plotOptions.grid3D.viewControl.autoRotateDirection),
                     autoRotateSpeed: plotOptions.grid3D.viewControl.autoRotateSpeed,
                     shadowSwitch: plotOptions.grid3D.light.main.shadow,
+                    splitArea: plotOptions.grid3D.splitArea.show,
                     tooltipSwitch: plotOptions.tooltip.show,
                     gridSwitch: plotOptions.grid3D.show,
                     visualMapColor: String(visualMapColorList.findIndex((obj, index) => JSON.stringify(obj.colors) === JSON.stringify(plotOptions.visualMap.inRange.color))),
@@ -764,6 +762,10 @@ export default function App() {
         } else if (changedField.shadowSwitch === true || changedField.shadowSwitch === false) {
             setPlotOptions(produce((draft) => {
                 draft.grid3D.light.main.shadow = changedField.shadowSwitch
+            }))
+        } else if (changedField.splitArea === true || changedField.splitArea === false) {
+            setPlotOptions(produce((draft) => {
+                draft.grid3D.splitArea.show = changedField.splitArea
             }))
         } else if (changedField.tooltipSwitch === true || changedField.tooltipSwitch === false) {
             setPlotOptions(produce((draft) => {
@@ -1331,31 +1333,14 @@ export default function App() {
                                                 ></Form.Switch>
                                             </div>
                                             <div style={{ width: '50%' }}>
-                                                <Form.Select
-                                                    dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
-                                                    field='autoRotate'
-                                                    label='自动旋转'
-                                                    initValue={initFormValue.autoRotate}
-                                                    clickToHide
-                                                >
-                                                    <Select.Option value={'off'}>关闭</Select.Option>
-                                                    <Select.Option value={'cw'}>向右旋转</Select.Option>
-                                                    <Select.Option value={'ccw'}>向左旋转</Select.Option>
-                                                </Form.Select>
+                                                <Form.Switch
+                                                    field='splitArea'
+                                                    label='显示分隔区域'
+                                                    initValue={initFormValue.splitArea}
+                                                ></Form.Switch>
                                             </div>
                                         </div>
-                                        {autoRotateState !== 'off' ? (
-                                            <Form.Slider
-                                                field='autoRotateSpeed'
-                                                label='自动旋转速度'
-                                                initValue={initFormValue.autoRotateSpeed}
-                                                min={1}
-                                                max={90}
-                                                showBoundary={true}
-                                                tipFormatter={v => (`${v}°/s`)}
-                                                handleDot={{ size: '10px', color: 'lightblue' } as any}
-                                            ></Form.Slider>
-                                        ) : (null)}
+
                                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
                                             <div style={{ width: '50%' }}>
                                                 <Form.Switch
@@ -1423,10 +1408,39 @@ export default function App() {
                                                 min={0}
                                                 max={600}
                                                 showBoundary={true}
+                                                tipFormatter={v => (`${v}px`)}
                                                 handleDot={{ size: '10px', color: 'lightblue' } as any}
                                             ></Form.Slider>
                                         ) : (null)}
 
+                                        <Divider margin='12px' align='center'>
+                                            <div style={{ fontSize: '12px', fontWeight: 'bold', opacity: 0.6 }}>自动旋转</div>
+                                        </Divider>
+
+                                        <Form.Select
+                                            style={{ width: '100%' }}
+                                            dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                            field='autoRotate'
+                                            label='自动旋转'
+                                            initValue={initFormValue.autoRotate}
+                                            clickToHide
+                                        >
+                                            <Select.Option value={'off'}>关闭</Select.Option>
+                                            <Select.Option value={'cw'}>向右旋转</Select.Option>
+                                            <Select.Option value={'ccw'}>向左旋转</Select.Option>
+                                        </Form.Select>
+                                        {autoRotateState !== 'off' ? (
+                                            <Form.Slider
+                                                field='autoRotateSpeed'
+                                                label='自动旋转速度'
+                                                initValue={initFormValue.autoRotateSpeed}
+                                                min={1}
+                                                max={90}
+                                                showBoundary={true}
+                                                tipFormatter={v => (`${v}°/s`)}
+                                                handleDot={{ size: '10px', color: 'lightblue' } as any}
+                                            ></Form.Slider>
+                                        ) : (null)}
 
                                         {/*<Form.Slot
                                     label='投影方式'
