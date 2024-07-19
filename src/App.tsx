@@ -14,7 +14,7 @@ import {
     Divider, InputNumber, Card, Typography, Tabs, TabPane,
     Spin,
 } from '@douyinfe/semi-ui';
-import { IconMore } from '@douyinfe/semi-icons';
+import { IconMore, IconInfoCircle } from '@douyinfe/semi-icons';
 import classnames from 'classnames'
 import * as echarts from 'echarts';
 import 'echarts-gl';
@@ -126,14 +126,17 @@ const visualMapColorList = [
     }
 ]
 
+const supportedFieldType = [2, 20, 99002, 99003, 99004]
+
 export default function App() {
-    const { Title } = Typography;
-    const formRef = useRef(null);
+    const { Text } = Typography;
     const [initFormValue, setInitFormValue] = useState<IFormValues>();
     const [tableSource, setTableSource] = useState<ITableSource[]>([]);
     const [dataRange, setDataRange] = useState<IDataRange[]>([{ type: SourceType.ALL }]);
     const [categories, setCategories] = useState<ICategory[]>([]);
-    const [autoRotateState, setAutoRotateState] = useState('off')
+    const [autoRotateState, setAutoRotateState] = useState('off');
+    const [dataSourceError, setDataSourceError] = useState(false);
+
     const [pageTheme, setPageTheme] = useState('LIGHT');
     const [config, setConfig] = useState({
         tableId: '',
@@ -293,6 +296,28 @@ export default function App() {
         }
     }, []);
 
+    function getMaxRecordTable(tableList: { tableId: string; tableName: string; }[]) {
+        return new Promise<{ initTableId: string; initTableName: string; maxRecordLength: number; }>(async (resolve, reject) => {
+            try {
+                let maxRecordLength = -Infinity;
+                let initTableId = '';
+                let initTableName = '';
+                for (let { tableId, tableName } of tableList) {
+                    const t = await bitable.base.getTableById(tableId);
+                    const recordList = await t.getRecordIdList();
+                    if (recordList.length > maxRecordLength) {
+                        maxRecordLength = recordList.length;
+                        initTableId = tableId;
+                        initTableName = tableName;
+                    }
+                }
+                resolve({ initTableId, initTableName, maxRecordLength });
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
     useEffect(() => {
         async function init() {
             const tableList = await getTableList();
@@ -302,7 +327,13 @@ export default function App() {
             let formInitValue: IFormValues = {} as IFormValues
 
             if (dashboard.state === DashboardState.Create) {
-                const tableId = tableList[0]?.tableId;
+                const { initTableId, initTableName, maxRecordLength } = await getMaxRecordTable(tableList)
+                console.log('Table ID with max records:', initTableId);
+                console.log('tabel name:', initTableName);
+                console.log('Max record length:', maxRecordLength);
+
+                //const tableId = tableList[0]?.tableId;
+                const tableId = initTableId;
                 const tableRanges = (await getTableRange(tableId)).filter(obj => obj.type !== 'ALL')
                 setDataRange(tableRanges)
 
@@ -354,7 +385,7 @@ export default function App() {
                     series.push({ fieldId: item.fieldId, rollup: item.calcu })
                 })
                 previewConfig.series = series
-                console.log(previewConfig)
+                //console.log(previewConfig)
                 const data = await dashboard.getPreviewData(previewConfig)
                 let _xyz_data = [], _x_index_name = [], _y_index_name = [];
                 let maxValue = -Infinity; // 初始化为负无穷大
@@ -376,17 +407,22 @@ export default function App() {
                     }
 
                 })
-                setPlotOptions(produce((draft) => {
-                    draft.visualMap.max = maxValue + maxValue * 0.1
-                    draft.visualMap.min = minValue - minValue * 0.1
-                    draft.series[0].data = _xyz_data
-                    draft.xAxis3D.data = _x_index_name
-                    draft.yAxis3D.data = _y_index_name
-                }))
+                if (_x_index_name.length === 0 || _y_index_name.length === 0 || _xyz_data.length === 0) {
+                    setDataSourceError(true)
+                } else {
+                    setPlotOptions(produce((draft) => {
+                        draft.visualMap.max = maxValue + maxValue * 0.1
+                        draft.visualMap.min = minValue - minValue * 0.1
+                        draft.series[0].data = _xyz_data
+                        draft.xAxis3D.data = _x_index_name
+                        draft.yAxis3D.data = _y_index_name
+                    }))
+                }
+
 
                 formInitValue = {
                     ...formInitValue,
-                    tableId: tableList[0]?.tableId,
+                    tableId: tableId,
                     dataRange: tableRanges[0],
                     y_axis: visibleFieldMeta[0]?.fieldId,
                     rotateSensitivity: 15,
@@ -578,13 +614,18 @@ export default function App() {
 
             })
             //console.log(_xyz_data, _x_index_name, _y_index_name)
-            setPlotOptions(produce((draft) => {
-                draft.visualMap.max = maxValue + maxValue * 0.1
-                draft.visualMap.min = minValue - minValue * 0.1
-                draft.series[0].data = _xyz_data
-                draft.xAxis3D.data = _x_index_name
-                draft.yAxis3D.data = _y_index_name
-            }))
+            if (_x_index_name.length === 0 || _y_index_name.length === 0 || _xyz_data.length === 0) {
+                setDataSourceError(true)
+            } else {
+                setPlotOptions(produce((draft) => {
+                    draft.visualMap.max = maxValue + maxValue * 0.1
+                    draft.visualMap.min = minValue - minValue * 0.1
+                    draft.series[0].data = _xyz_data
+                    draft.xAxis3D.data = _x_index_name
+                    draft.yAxis3D.data = _y_index_name
+                }))
+            }
+
 
         }
 
@@ -626,29 +667,81 @@ export default function App() {
                 ]
             }],
         } as any)
-    }
-    const handleConfigChange = async (values: any, changedField: any) => {
-        if (changedField.tableId) {
-            const tableRanges = (await getTableRange(changedField.tableId)).filter(obj => obj.type !== 'ALL')
-            setDataRange(tableRanges)
-            const categories = await getViewCategories(changedField.tableId);
-            setCategories(categories);
-            setConfig(produce((draft) => {
-                draft.tableId = changedField.tableId
-                draft.dataRange = JSON.parse(categories[0])
-            }))
-            if (formRef.current) {
-                formRef.current.formApi.setValue('dataRange', JSON.stringify(tableRanges[0]))
+    };
+
+    const tableOnChange = async (tableId) => {
+        setDataSourceError(false)
+
+        const tableRanges = (await getTableRange(tableId)).filter(obj => obj.type !== 'ALL')
+        setDataRange(tableRanges)
+        const categories = await getViewCategories(tableId);
+        setCategories(categories);
+        const x_axisList = categories
+            .filter((item, index) => index !== 0)
+            .filter((item, index) => supportedFieldType.includes(item.fieldType))
+            .map((item, index) => {
+                return { ...item, calcu: 'MAX' }
+            })
+        setAdjustableForm(x_axisList)
+        setInitFormValue(produce((draft) => {
+            draft.tableId = tableId
+            draft.dataRange = tableRanges[0]
+            draft.y_axis = categories[0].fieldId
+        }))
+        setConfig(produce((draft) => {
+            draft.tableId = tableId
+            draft.dataRange = tableRanges[0]
+            draft.y_axis = categories[0].fieldId
+            draft.x_axis = x_axisList
+        }))
+    };
+    const dataRangeOnChange = async (dataRange) => {
+        dataRange = JSON.parse(dataRange)
+        const table = await bitable.base.getTableById(config.tableId);
+        const defaultView = await table.getViewById(dataRange.viewId)
+        const fieldMeta = await defaultView.getFieldMetaList();
+        const visibleFieldIdList = await defaultView.getVisibleFieldIdList();
+        let visibleFieldMeta = []
+        for (let i = 0; i <= fieldMeta.length - 1; i++) {
+            if (visibleFieldIdList.includes(fieldMeta[i].id)) {
+                visibleFieldMeta.push({
+                    fieldId: fieldMeta[i].id,
+                    fieldName: fieldMeta[i].name,
+                    fieldType: fieldMeta[i].type
+                })
             }
-        } else if (changedField.dataRange) {
-            setConfig(produce((draft) => {
-                draft.dataRange = JSON.parse(changedField.dataRange)
-            }))
-        } else if (changedField.y_axis) {
-            setConfig(produce((draft) => {
-                draft.y_axis = changedField.y_axis
-            }));
-        } else if (changedField.rotateSensitivity) {
+        }
+        setCategories(visibleFieldMeta)
+        setInitFormValue(produce((draft) => {
+            draft.dataRange = dataRange
+            draft.y_axis = visibleFieldMeta[0].fieldId
+        }))
+        const x_axisList = visibleFieldMeta
+            .filter((item, index) => item.fieldId !== dataRange.fieldId)
+            .filter((item, index) => supportedFieldType.includes(item.fieldType))
+            .map((item, index) => {
+                return { ...item, calcu: 'MAX' }
+            })
+        setAdjustableForm(x_axisList)
+        setConfig(produce((draft) => {
+            draft.dataRange = dataRange
+            draft.y_axis = visibleFieldMeta[0].fieldId
+            draft.x_axis = x_axisList
+        }))
+    }
+
+    const y_axisOnChange = (fieldId) => {
+        setInitFormValue(produce((draft) => {
+            draft.y_axis = fieldId
+        }))
+        setConfig(produce((draft) => {
+            draft.y_axis = fieldId
+        }));
+
+    }
+
+    const handleConfigChange = async (values: any, changedField: any) => {
+        if (changedField.rotateSensitivity) {
             setPlotOptions(produce((draft) => {
                 draft.grid3D.viewControl.rotateSensitivity = changedField.rotateSensitivity
             }))
@@ -779,24 +872,24 @@ export default function App() {
     const renderCustomOption_col = (item: any) => {
         let iconPath = ''
         switch (item.fieldType) {
-            case FieldType.NotSupport:
-                iconPath = '';
-                break;
+            //case FieldType.NotSupport:
+            //    iconPath = '';
+            //    break;
             case FieldType.Text:
                 iconPath = './text.svg'; // 设置多行文本图标路径
                 break;
             case FieldType.Number:
                 iconPath = './number.svg'; // 设置数字图标路径
                 break;
-            case FieldType.SingleSelect:
-                iconPath = ''; // 设置单选图标路径
-                break;
-            case FieldType.MultiSelect:
-                iconPath = ''; // 设置多选图标路径
-                break;
-            case FieldType.DateTime:
-                iconPath = './date.svg'; // 设置日期图标路径
-                break;
+            //case FieldType.SingleSelect:
+            //    iconPath = ''; // 设置单选图标路径
+            //    break;
+            //case FieldType.MultiSelect:
+            //    iconPath = ''; // 设置多选图标路径
+            //    break;
+            //case FieldType.DateTime:
+            //    iconPath = './date.svg'; // 设置日期图标路径
+            //    break;
             case FieldType.Checkbox:
                 iconPath = './checkbox.svg'; // 设置复选框图标路径
                 break;
@@ -824,8 +917,11 @@ export default function App() {
             case FieldType.Formula:
                 iconPath = './formula.svg'; // 设置公式图标路径
                 break;
+            case 0:
+                iconPath = './button.svg'; // 设置按钮图标路径
+                break;
             default:
-                iconPath = ''; // 默认图标路径或处理
+                iconPath = './warning.svg'; // 默认图标路径或处理
                 break;
         }
         return (
@@ -876,14 +972,6 @@ export default function App() {
                 prevItems.splice(index + 1, 0, movedItem);
                 return [...prevItems];
             });
-        }
-    }
-    const DOWNindexDisabled = (index) => {
-        //console.log(index, adjustableForm.length - 1 === index)
-        if (adjustableForm.length - 1 === index) {
-            return true
-        } else {
-            return false
         }
     };
     const fieldSelectChange = (value, index) => {
@@ -958,19 +1046,34 @@ export default function App() {
             'main': true,
         })}>
             <div className='content'>
-                {plotOptions.series[0].data ? (
-                    <ReactEcharts
-                        option={plotOptions}
-                        style={{ height: '100%', width: '100%' }}
-                        opts={{ renderer: 'canvas' }}
-                    />
+                {dataSourceError ? (
+                    <Card
+                        className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}
+                        style={{ maxWidth: 360 }}
+                        title={'⚠️ 数据错误'}
+                        headerExtraContent={
+                            <Text link={{ href: 'https://semi.design/zh-CN/show/card', target: '_blank' }}>
+                                帮助文档
+                            </Text>
+                        }
+                    >
+                        使用当前选择的数据表绘图失败<br />请检查数据类型是否正确或选择其他数据表
+                    </Card>
                 ) : (
-                    <Spin
-                        size='large'
-                        indicator={<div style={{ fontSize: '50px' }}>🤔</div>}
-                        tip={<p>👆this is only a loading icon👆</p>}
-                        style={{ width: '50%' }}
-                    ></Spin>
+                    plotOptions.series[0].data ? (
+                        <ReactEcharts
+                            option={plotOptions}
+                            style={{ height: '100%', width: '100%' }}
+                            opts={{ renderer: 'canvas' }}
+                        />
+                    ) : (
+                        <Spin
+                            size='large'
+                            indicator={<div style={{ fontSize: '50px' }}>🤔</div>}
+                            tip={<p>👆this is only a loading icon👆</p>}
+                            style={{ width: '50%' }}
+                        ></Spin>
+                    )
                 )}
             </div>
 
@@ -996,47 +1099,61 @@ export default function App() {
                                         className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}
                                         layout='vertical'
                                         style={{ width: 300 }}
-                                        ref={formRef}
                                         onValueChange={handleConfigChange}
                                     >
-                                        <Form.Select
-                                            dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
-                                            field='tableId'
-                                            label='数据源'
-                                            initValue={initFormValue.tableId}
-                                            style={{ width: '100%', display: 'flex' }}
-                                            searchPosition='dropdown'
-                                            filter
-                                            clickToHide
-                                        >
-                                            {tableSource.map(source => renderCustomOption_tableSVG(source))}
-                                        </Form.Select>
-                                        <Form.Select
-                                            dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
-                                            field='dataRange'
-                                            label='数据范围'
-                                            initValue={JSON.stringify(initFormValue.dataRange)}
-                                            style={{ width: '100%' }}
-                                            searchPosition='dropdown'
-                                            filter
-                                            clickToHide
-                                        >
-                                            {dataRange.map(view => renderCustomOption_tableSVG_dataRange(view))}
-                                        </Form.Select>
-                                        <Form.Select
-                                            dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
-                                            field='y_axis'
-                                            label='Y轴'
-                                            style={{ width: '100%' }}
-                                            searchPosition='dropdown'
-                                            filter
-                                            clickToHide
-                                            initValue={initFormValue.y_axis}
-                                        >
-                                            {categories.map(field => renderCustomOption_col(field))}
-                                        </Form.Select>
+                                        <Form.Slot label='数据源'>
+                                            <Select
+                                                onChange={tableOnChange}
+                                                dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                //field='tableId'
+                                                //label='数据源'
+                                                //initValue={initFormValue.tableId}
+                                                value={initFormValue.tableId}
+                                                style={{ width: '100%', display: 'flex' }}
+                                                searchPosition='dropdown'
+                                                filter
+                                                clickToHide
+                                            >
+                                                {tableSource.map(source => renderCustomOption_tableSVG(source))}
+                                            </Select>
+                                        </Form.Slot>
 
-                                        <Form.Slot label='X轴'>
+                                        <Form.Slot label='数据范围'>
+                                            <Select
+                                                onChange={dataRangeOnChange}
+                                                dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                //field='dataRange'
+                                                //label='数据范围'
+                                                //initValue={JSON.stringify(initFormValue.dataRange)}
+                                                value={JSON.stringify(initFormValue.dataRange)}
+                                                style={{ width: '100%' }}
+                                                searchPosition='dropdown'
+                                                filter
+                                                clickToHide
+                                            >
+                                                {dataRange.map(view => renderCustomOption_tableSVG_dataRange(view))}2
+                                            </Select>
+                                        </Form.Slot>
+                                        <Form.Slot label='Y轴' >
+                                            <Select
+                                                onChange={y_axisOnChange}
+                                                dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                //field='y_axis'
+                                                //label='Y轴'
+                                                //initValue={initFormValue.y_axis}
+                                                value={initFormValue.y_axis}
+                                                style={{ width: '100%' }}
+                                                searchPosition='dropdown'
+                                                filter
+                                                clickToHide
+                                            >
+                                                {categories.map(field => renderCustomOption_col(field))}
+                                            </Select>
+                                        </Form.Slot>
+
+
+
+                                        <Form.Slot label={<Tooltip content={<div>目前支持的字段类型包括：<br />数字，公式，进度条，货币，评分</div>}>X轴<IconInfoCircle style={{ marginLeft: '5px' }} /></Tooltip>}>
                                             {/* 
                                             <div style={{ width: '100%', overflowWrap: 'break-word' }}>{JSON.stringify(adjustableForm)}</div>
                                             */}
@@ -1156,14 +1273,8 @@ export default function App() {
                                                     onChange={addFieldButtonClick}
 
                                                 >
-                                                    {categories.map(field =>
-                                                        field.fieldType === FieldType.Number ||
-                                                            field.fieldType === FieldType.Formula ||
-                                                            field.fieldType === FieldType.Progress ||
-                                                            field.fieldType === FieldType.Currency ||
-                                                            field.fieldType === FieldType.Rating
-                                                            ?
-                                                            (renderCustomOption_col(field)) : (null))}
+                                                    {categories.map(field => supportedFieldType.includes(field.fieldType) ?
+                                                        (renderCustomOption_col(field)) : (null))}
                                                 </Select>
                                             </Tooltip>
                                         </div>
@@ -1178,7 +1289,6 @@ export default function App() {
                                         className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}
                                         layout='vertical'
                                         style={{ width: 300 }}
-                                        ref={formRef}
                                         onValueChange={handleConfigChange}
                                     >
                                         <Divider margin='12px' align='center'>
