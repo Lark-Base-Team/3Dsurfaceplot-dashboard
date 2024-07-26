@@ -14,7 +14,7 @@ import {
     Divider, InputNumber, Card, Typography, Tabs, TabPane,
     Spin,
 } from '@douyinfe/semi-ui';
-import { IconMore, IconInfoCircle } from '@douyinfe/semi-icons';
+import { IconMore, IconInfoCircle, IconPlusStroked, IconIssueStroked, IconPlus } from '@douyinfe/semi-icons';
 import classnames from 'classnames'
 import * as echarts from 'echarts';
 import 'echarts-gl';
@@ -1018,21 +1018,23 @@ export default function App() {
                 type="primary"
                 style={{ display: 'flex', alignItems: 'center', height: '90%', marginRight: '3px' }}
             >
-                <IconMore style={{ display: 'flex', alignItems: 'center' }} />
+                <IconMore style={{ display: 'flex', alignItems: 'center', color: 'var(--semi-color-text-2)' }} rotate={90} size={'small'} />
             </Button>
         );
     };
     const triggerRender2 = ({ value, ...rest }) => {
         return (
-            <div style={{ width: '80px', fontWeight: 'bold', fontSize: '14px', color: 'rgb(80 132 245)', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+
+            <div style={{ width: '80px', fontWeight: 'regular', fontSize: '14px', color: 'rgb(80 132 245)', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                <IconPlusStroked style={{ marginRight: '2px' }} />
                 添加字段
             </div>
         );
     };
     const triggerRender3 = ({ value, ...rest }) => {
         return (
-            <div style={{ width: '120px', fontWeight: 'bold', fontSize: '14px', color: 'rgb(80 132 245)', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                更改所有计算方法
+            <div style={{ fontWeight: 'regular', fontSize: '14px', color: 'rgb(80 132 245)', display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                批量修改
             </div>
         );
     };
@@ -1046,7 +1048,8 @@ export default function App() {
         <main className={classnames({
             'main-config': dashboard.state === DashboardState.Config || dashboard.state === DashboardState.Create,
             'main': true,
-        })}>
+        })} style={{ borderTop: pageTheme === 'DARK' ? '1px solid rgba(var(--semi-grey-7), 1)' : '1px solid var(--semi-color-border)', overflow: 'clip', width: '100vw', height: '100vh' }}>
+
             <div className='content'>
                 {dataSourceError ? (
                     <Card
@@ -1080,22 +1083,19 @@ export default function App() {
             </div>
 
             {dashboard.state === DashboardState.Config || dashboard.state === DashboardState.Create ? (
-                <div style={{ position: 'relative' }}>
-                    <div
-                        className='config-panel'
-                        style={{
-                            '--scrollbar-thumb-bg': pageTheme === 'DARK' ? ('#797B7F') : ('#BBBDBE'),
-                            '--scrollbar-thumb-hover-bg': pageTheme === 'DARK' ? ('#BBBDBE') : ('#797B7F'),
-                            overflowY: 'scroll', // 仅纵向滚动
-                            overflowX: 'hidden', // 禁止横向滚动
-                            paddingLeft: '15px',
-                            flex: '1 1 auto', // 自动扩展并占据剩余空间
-                            maxHeight: 'calc(100vh - 60px)', // 确保内容区高度不超过100vh减去按钮区高度
-                            paddingTop: '0px'
-                        } as React.CSSProperties}
-                    >
-                        <Tabs type="line" className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}>
-                            <TabPane tab="数据配置" itemKey="0" style={{ paddingRight: '10px' }}>
+                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', borderLeft: pageTheme === 'DARK' ? '1px solid rgba(var(--semi-grey-7), 1)' : '1px solid var(--semi-color-border)' }}>
+                    <Tabs type="line" className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}>
+                        <TabPane tab="数据配置" itemKey="0" style={{ paddingRight: '10px' }}>
+                            <div
+                                className='config-panel'
+                                style={{
+                                    '--scrollbar-thumb-bg': pageTheme === 'DARK' ? ('#797B7F') : ('#BBBDBE'),
+                                    '--scrollbar-thumb-hover-bg': pageTheme === 'DARK' ? ('#BBBDBE') : ('#797B7F'),
+                                    height: 'calc(100vh - 120px)',
+                                    paddingTop: '0px',
+                                    paddingBottom: '70px'
+                                } as React.CSSProperties}
+                            >
                                 {tableSource[0] && dataRange[0] && initFormValue?.tableId ? (
                                     <Form
                                         className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}
@@ -1103,10 +1103,11 @@ export default function App() {
                                         style={{ width: 300 }}
                                         onValueChange={handleConfigChange}
                                     >
-                                        <Form.Slot label='数据源'>
+                                        <Form.Slot label={<div style={{ fontWeight: 'initial' }}>数据源</div>}>
                                             <Select
                                                 onChange={tableOnChange}
                                                 dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                dropdownStyle={{ width: '300px' }}
                                                 //field='tableId'
                                                 //label='数据源'
                                                 //initValue={initFormValue.tableId}
@@ -1120,10 +1121,11 @@ export default function App() {
                                             </Select>
                                         </Form.Slot>
 
-                                        <Form.Slot label='数据范围'>
+                                        <Form.Slot label={<div style={{ fontWeight: 'initial' }}>数据范围</div>}>
                                             <Select
                                                 onChange={dataRangeOnChange}
                                                 dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                dropdownStyle={{ width: '300px' }}
                                                 //field='dataRange'
                                                 //label='数据范围'
                                                 //initValue={JSON.stringify(initFormValue.dataRange)}
@@ -1136,10 +1138,11 @@ export default function App() {
                                                 {dataRange.map(view => renderCustomOption_tableSVG_dataRange(view))}2
                                             </Select>
                                         </Form.Slot>
-                                        <Form.Slot label='Y轴' >
+                                        <Form.Slot label={<div style={{ fontWeight: 'initial' }}>Y轴</div>}>
                                             <Select
                                                 onChange={y_axisOnChange}
                                                 dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                dropdownStyle={{ width: '300px' }}
                                                 //field='y_axis'
                                                 //label='Y轴'
                                                 //initValue={initFormValue.y_axis}
@@ -1152,10 +1155,38 @@ export default function App() {
                                                 {categories.map(field => renderCustomOption_col(field))}
                                             </Select>
                                         </Form.Slot>
-
-
-
-                                        <Form.Slot label={<Tooltip content={<div>目前支持的字段类型包括：<br />数字，公式，进度条，货币，评分</div>}>X轴<IconInfoCircle style={{ marginLeft: '5px' }} /></Tooltip>}>
+                                        <Form.Slot
+                                            label={{
+                                                className: 'form-label',
+                                                text:
+                                                    <div style={{ display: 'flex', width: '100%', justifyContent: 'space-between' }}>
+                                                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                            X轴
+                                                            <Tooltip content={<div>目前支持的字段类型包括：<br />数字，公式，进度条，货币，评分</div>}><IconIssueStroked style={{ color: 'var(--semi-color-text-2)', marginLeft: '5px' }} /></Tooltip>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignContent: 'center' }}>
+                                                            <Tooltip content={'修改当前所有字段的计算方法'} position='bottom'>
+                                                                <Select
+                                                                    dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                                    dropdownStyle={{ borderColor: 'var(--semi-color-border)' }}
+                                                                    showArrow={false}
+                                                                    size='small'
+                                                                    borderless={true}
+                                                                    style={{ width: '100%', overflowY: 'hidden', borderColor: 'var(--semi-color-border)' }}
+                                                                    clickToHide
+                                                                    triggerRender={triggerRender3}
+                                                                    onChange={allFieldCalcuChange}
+                                                                >
+                                                                    <Select.Option value={'SUM'}>求和</Select.Option>
+                                                                    <Select.Option value={'MAX'}>最大值</Select.Option>
+                                                                    <Select.Option value={'MIN'}>最小值</Select.Option>
+                                                                    <Select.Option value={'AVERAGE'}>平均值</Select.Option>
+                                                                </Select>
+                                                            </Tooltip>
+                                                        </div>
+                                                    </div>
+                                            }}
+                                        >
                                             {/* 
                                             <div style={{ width: '100%', overflowWrap: 'break-word' }}>{JSON.stringify(adjustableForm)}</div>
                                             */}
@@ -1165,14 +1196,14 @@ export default function App() {
                                                         noLabel
                                                         labelPosition='left'
                                                         field={String(index)}
-                                                        fieldStyle={{ paddingTop: '2px', paddingBottom: '2px' }}
+                                                        fieldStyle={{ paddingTop: '5px', paddingBottom: '5px' }}
                                                         style={{ width: '100%', overflowY: 'hidden', overflowX: 'hidden' }}
                                                         emptyContent={null}
                                                         showArrow={false}
                                                         prefix={
                                                             <Select
                                                                 dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
-                                                                dropdownStyle={{ width: '120%' }}
+                                                                dropdownStyle={{ width: '300px', marginLeft: -10 }}
                                                                 filter
                                                                 clickToHide
                                                                 showArrow={false}
@@ -1198,7 +1229,7 @@ export default function App() {
                                                                 <Tooltip content={<div style={{ display: 'flex', textAlign: 'center' }}>仅在索引字段中有重复记录时有效<br />🤪</div>} position='topRight'>
                                                                     <Select
                                                                         dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
-                                                                        dropdownStyle={{ borderColor: '#ffffff00' }}
+                                                                        dropdownStyle={{ borderColor: 'var(--semi-color-border)' }}
                                                                         prefix={''}
                                                                         showArrow={false}
                                                                         triggerRender={triggerRender0}
@@ -1218,7 +1249,7 @@ export default function App() {
 
                                                                 <Select
                                                                     dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
-                                                                    dropdownStyle={{ borderColor: '#ffffff00' }}
+                                                                    dropdownStyle={{ borderColor: 'var(--semi-color-border)' }}
                                                                     prefix={''}
                                                                     onDropdownVisibleChange={fieldDropdownClick}
                                                                     onChange={(value) => moveDropdownChange(value, index)}
@@ -1242,24 +1273,6 @@ export default function App() {
                                             </Form>
                                         </Form.Slot>
                                         <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end' }}>
-                                            <Tooltip content={'修改当前所有字段的计算方法'} position='bottom'>
-                                                <Select
-                                                    dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
-                                                    dropdownStyle={{ borderColor: '#ffffff00' }}
-                                                    showArrow={false}
-                                                    size='small'
-                                                    borderless={true}
-                                                    style={{ width: '120px', overflowY: 'hidden', borderColor: '#ffffff00', marginRight: '10px' }}
-                                                    clickToHide
-                                                    triggerRender={triggerRender3}
-                                                    onChange={allFieldCalcuChange}
-                                                >
-                                                    <Select.Option value={'SUM'}>求和</Select.Option>
-                                                    <Select.Option value={'MAX'}>最大值</Select.Option>
-                                                    <Select.Option value={'MIN'}>最小值</Select.Option>
-                                                    <Select.Option value={'AVERAGE'}>平均值</Select.Option>
-                                                </Select>
-                                            </Tooltip>
                                             <Tooltip content={'仅支持选择数字字段'} position='bottomRight'>
                                                 <Select
                                                     dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
@@ -1284,8 +1297,19 @@ export default function App() {
 
                                     </Form>
                                 ) : null}
-                            </TabPane>
-                            <TabPane tab='样式配置' itemKey='1' style={{ paddingRight: '10px' }}>
+                            </div>
+                        </TabPane>
+                        <TabPane tab='样式配置' itemKey='1' style={{ paddingRight: '10px' }}>
+                            <div
+                                className='config-panel'
+                                style={{
+                                    '--scrollbar-thumb-bg': pageTheme === 'DARK' ? ('#797B7F') : ('#BBBDBE'),
+                                    '--scrollbar-thumb-hover-bg': pageTheme === 'DARK' ? ('#BBBDBE') : ('#797B7F'),
+                                    height: 'calc(100vh - 120px)', // 确保内容区高度不超过100vh减去按钮区高度
+                                    paddingTop: '0px',
+                                    paddingBottom: '70px'
+                                } as React.CSSProperties}
+                            >
                                 {tableSource[0] && dataRange[0] && initFormValue?.tableId ? (
                                     <Form
                                         className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}
@@ -1293,14 +1317,14 @@ export default function App() {
                                         style={{ width: 300 }}
                                         onValueChange={handleConfigChange}
                                     >
-                                        <Divider margin='12px' align='center'>
+                                        {/* <Divider margin='12px' align='center'>
                                             <div style={{ fontSize: '12px', fontWeight: 'bold', opacity: 0.6 }}>基础控制</div>
-                                        </Divider>
+                                        </Divider>*/}
 
                                         <Form.Select
                                             dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                             field='backgroundColor'
-                                            label='图表背景'
+                                            label={<div style={{ fontWeight: 'initial' }}>图表背景</div>}
                                             initValue={initFormValue.backgroundColor}
                                             style={{ width: '100%' }}
                                             clickToHide
@@ -1318,54 +1342,59 @@ export default function App() {
                                         </Form.Select>
                                         <Form.Slider
                                             field='rotateSensitivity'
-                                            label='鼠标旋转灵敏度'
+                                            label={<div style={{ fontWeight: 'initial' }}>鼠标旋转灵敏度</div>}
                                             initValue={initFormValue.rotateSensitivity}
+                                            railStyle={{ backgroundColor: 'var(--semi-color-fill-1)' }}
                                             max={30}
                                             showBoundary={true}
                                             handleDot={{ size: '10px', color: 'lightblue' } as any}
                                         ></Form.Slider>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-                                            <div style={{ width: '50%' }}>
-                                                <Form.Switch
+                                            <div style={{ width: '50%', display: 'flex', fontSize: '14px', alignItems: 'center', gap: '10px' }}>
+                                                <Form.Checkbox
                                                     field='shadowSwitch'
-                                                    label='阴影'
+                                                    noLabel
                                                     initValue={initFormValue.shadowSwitch}
-                                                ></Form.Switch>
+                                                ></Form.Checkbox>
+                                                阴影
                                             </div>
-                                            <div style={{ width: '50%' }}>
-                                                <Form.Switch
+                                            <div style={{ width: '50%', display: 'flex', fontSize: '14px', alignItems: 'center', gap: '10px' }}>
+                                                <Form.Checkbox
                                                     field='splitArea'
-                                                    label='显示分隔区域'
+                                                    noLabel
                                                     initValue={initFormValue.splitArea}
-                                                ></Form.Switch>
+                                                ></Form.Checkbox>
+                                                显示分隔区域
                                             </div>
                                         </div>
 
                                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-                                            <div style={{ width: '50%' }}>
-                                                <Form.Switch
+                                            <div style={{ width: '50%', display: 'flex', fontSize: '14px', alignItems: 'center', gap: '10px' }}>
+                                                <Form.Checkbox
                                                     field='tooltipSwitch'
-                                                    label='提示框显示'
+                                                    noLabel
                                                     initValue={initFormValue.tooltipSwitch}
-                                                ></Form.Switch>
+                                                ></Form.Checkbox>
+                                                提示框显示
                                             </div>
-                                            <div style={{ width: '50%' }}>
-                                                <Form.Switch
+                                            <div style={{ width: '50%', display: 'flex', fontSize: '14px', alignItems: 'center', gap: '10px' }}>
+                                                <Form.Checkbox
                                                     field='gridSwitch'
-                                                    label='坐标轴显示'
+                                                    noLabel
                                                     initValue={initFormValue.gridSwitch}
-                                                ></Form.Switch>
+                                                ></Form.Checkbox>
+                                                坐标轴显示
                                             </div>
                                         </div>
 
-                                        <Divider margin='12px' align='center'>
+                                        {/* <Divider margin='12px' align='center'>
                                             <div style={{ fontSize: '12px', fontWeight: 'bold', opacity: 0.6 }}>数据映射</div>
-                                        </Divider>
+                                        </Divider>*/}
 
                                         <Form.Select
                                             dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                             field='visualMapColor'
-                                            label='映射颜色'
+                                            label={<div style={{ fontWeight: 'initial' }}>映射颜色</div>}
                                             initValue={initFormValue.visualMapColor}
                                             style={{ width: '100%' }}
                                             clickToHide
@@ -1385,25 +1414,26 @@ export default function App() {
                                         </Form.Select>
 
                                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
-                                            <div style={{ width: '50%' }}>
-                                                <Form.Switch
+                                            <div style={{ width: '50%', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '10px' }}>
+                                                <Form.Checkbox
                                                     field='visualMapShowSwitch'
-                                                    label='数值映射条显示'
+                                                    noLabel
                                                     initValue={initFormValue.visualMapShowSwitch}
-                                                ></Form.Switch>
+                                                ></Form.Checkbox>数值映射条显示
                                             </div>
-                                            <div style={{ width: '50%' }}>
-                                                <Form.Switch
+                                            <div style={{ width: '50%', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '10px' }}>
+                                                <Form.Checkbox
                                                     field='visualMapSwitch'
-                                                    label='数值颜色映射'
+                                                    noLabel
                                                     initValue={initFormValue.visualMapSwitch}
-                                                ></Form.Switch>
+                                                ></Form.Checkbox>数值颜色映射
                                             </div>
                                         </div>
                                         {plotOptions.visualMap.show ? (
                                             <Form.Slider
                                                 field='visualMapItemHeight'
                                                 label='控制条高度'
+                                                railStyle={{ backgroundColor: 'var(--semi-color-fill-1)' }}
                                                 initValue={initFormValue.visualMapItemHeight}
                                                 min={0}
                                                 max={600}
@@ -1413,15 +1443,15 @@ export default function App() {
                                             ></Form.Slider>
                                         ) : (null)}
 
-                                        <Divider margin='12px' align='center'>
+                                        {/* <Divider margin='12px' align='center'>
                                             <div style={{ fontSize: '12px', fontWeight: 'bold', opacity: 0.6 }}>自动旋转</div>
-                                        </Divider>
+                                        </Divider>*/}
 
                                         <Form.Select
                                             style={{ width: '100%' }}
                                             dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                             field='autoRotate'
-                                            label='自动旋转'
+                                            label={<div style={{ fontWeight: 'initial' }}>自动旋转</div>}
                                             initValue={initFormValue.autoRotate}
                                             clickToHide
                                         >
@@ -1432,8 +1462,9 @@ export default function App() {
                                         {autoRotateState !== 'off' ? (
                                             <Form.Slider
                                                 field='autoRotateSpeed'
-                                                label='自动旋转速度'
+                                                label={<div style={{ fontWeight: 'initial' }}>自动旋转速度</div>}
                                                 initValue={initFormValue.autoRotateSpeed}
+                                                railStyle={{ backgroundColor: 'var(--semi-color-fill-1)' }}
                                                 min={1}
                                                 max={90}
                                                 showBoundary={true}
@@ -1442,37 +1473,16 @@ export default function App() {
                                             ></Form.Slider>
                                         ) : (null)}
 
-                                        {/*<Form.Slot
-                                    label='投影方式'
-                                >
-                                    <Title heading={6} style={{ margin: 8 }}>
-                                        {projection ? '透视投影' : '正交投影'}
-                                    </Title>
-                                    <Switch
-                                        checked={!projection}
-                                        onChange={() => {
-                                            setProjection(!projection)
-                                            setPlotOptions(produce((draft) => {
-                                                projection === false ?
-                                                    (draft.grid3D.viewControl.projection = 'perspective') :
-                                                    (draft.grid3D.viewControl.projection = 'orthographic')
-                                            }))
-                                        }}
-                                    />
-                                </Form.Slot>
-                                */}
                                     </Form>
                                 ) : null}
-                            </TabPane>
-                        </Tabs>
-
-                    </div>
+                            </div>
+                        </TabPane>
+                    </Tabs>
                     <div
                         className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}
                         style={{
                             display: 'flex', justifyContent: 'flex-end',
-                            bottom: '0', height: '50px', flexShrink: '0', // 防止高度收缩
-                            borderLeft: '1px solid rgba(222, 224, 227, 0.15)',
+                            position: 'absolute', right: '20px', bottom: '20px', height: '50px', flexShrink: '0', // 防止高度收缩
                             paddingRight: '15px', gap: '10px',
                         }}
                     >

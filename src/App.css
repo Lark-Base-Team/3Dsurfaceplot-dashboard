@@ -28,10 +28,6 @@ html {
     height: 100vh;
 }
 
-.main-config {
-    border-top: rgba(222, 224, 227, 0.15) 1px solid;
-}
-
 .content {
     flex: 1;
     display: flex;
@@ -47,10 +43,12 @@ html {
     justify-content: flex-start;
     gap: 20px;
     flex-direction: column;
-    border-left: rgba(222, 224, 227, 0.15) 1px solid;
+    
     padding: 20px;
     box-sizing: border-box;
     margin-right: 1px;
+    overflow-y: scroll;
+    overflow-x: hidden;
 }
 
 .config-panel::-webkit-scrollbar {
@@ -82,7 +80,7 @@ html {
 .form-select {
     background-color: var(--semi-color-bg-2);
     border-radius: 6px;
-    border: 1px solid gray;
+    border: 1px solid var(--semi-color-border);
 
 }
 
@@ -107,7 +105,7 @@ html {
     background: var(--scrollbar-thumb-hover-bg, #797B7F);
 }
 
-.childSelect:focus{
+.childSelect:focus {
     border-color: #ffffff00;
 }
 
@@ -135,4 +133,26 @@ html {
 
 .colorPicker {
     background-color: var(--semi-color-bg-2);
+}
+
+.semi-tabs-bar {
+    justify-content: center;
+    display: flex;
+}
+
+.semi-tabs-content {
+    padding: 0 !important;
+}
+
+.form-label {
+    width: 100%;
+    padding: 0 !important;
+}
+
+.semi-form-field-label-text {
+    font-weight: 400;
+}
+
+.semi-slider {
+    padding: 0 !important;
 }
