@@ -138,7 +138,7 @@ export default function App() {
     const [autoRotateState, setAutoRotateState] = useState('off');
     const [dataSourceError, setDataSourceError] = useState(false);
 
-    const [pageTheme, setPageTheme] = useState('LIGHT');
+    const [pageTheme, setPageTheme] = useState('light');
     const [config, setConfig] = useState({
         tableId: '',
         dataRange: { type: 'ALL' },
@@ -168,7 +168,10 @@ export default function App() {
                     '#d73027',
                     '#a50026'
                 ]
-            }
+            },
+            textStyle: {
+                color: '#ffffff',
+            },
         },
         xAxis3D: {
             type: 'category',
@@ -271,20 +274,32 @@ export default function App() {
         return visibleFieldMeta;
     }
 
-    useEffect(() => {
-        async function a() {
-            bitable.bridge.onThemeChange((event) => {
-                setPageTheme(event.data.theme);
-            });
-            const theme = await bitable.bridge.getTheme();
-            //console.log('addon detect theme changed', theme)
-            setPageTheme(theme);
-            setPlotOptions(produce((draft) => {
-                theme === 'LIGHT' ? (draft.grid3D.axisLine.lineStyle.color = '#000') : (draft.grid3D.axisLine.lineStyle.color = '#fff')
-            }))
-        }
-        a()
-    }, [dashboard.state])
+    function updateTheme(theme: string, bgColor: string) {
+        document.body.setAttribute('theme-mode', theme);
+        setPageTheme(theme);
+        setBgColor(bgColor);
+        setPlotOptions(produce((draft) => {
+            if(theme === 'light') { 
+                draft.grid3D.axisLine.lineStyle.color = '#000';
+                draft.visualMap.textStyle = { color: '#000'};
+            } else {
+                draft.grid3D.axisLine.lineStyle.color = '#fff';
+                draft.visualMap.textStyle = { color: '#fff'}
+            }
+        }))
+    }
+
+    const [bgColor, setBgColor] = useState('#ffffff');
+    function useTheme() {
+        dashboard.onThemeChange((res) => {
+            updateTheme(res.data.theme.toLocaleLowerCase(), res.data.chartBgColor);
+            })
+
+        dashboard.getTheme().then((res) => {   
+            updateTheme(res.theme.toLocaleLowerCase(), res.chartBgColor);
+        })     
+    }
+    useTheme();
 
     useEffect(() => {
         const offConfigChange = dashboard.onConfigChange((r) => {
@@ -1048,12 +1063,13 @@ export default function App() {
         <main className={classnames({
             'main-config': dashboard.state === DashboardState.Config || dashboard.state === DashboardState.Create,
             'main': true,
-        })} style={{ borderTop: pageTheme === 'DARK' ? '1px solid rgba(var(--semi-grey-7), 1)' : '1px solid var(--semi-color-border)', overflow: 'clip', width: '100vw', height: '100vh' }}>
+            'top-border': dashboard.state === DashboardState.Config || dashboard.state === DashboardState.Create,
+        })} style={{ overflow: 'clip', width: '100vw', height: '100vh', backgroundColor: bgColor}}>
 
             <div className='content'>
                 {dataSourceError ? (
                     <Card
-                        className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}
+                        className={pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')}
                         style={{ maxWidth: 360 }}
                         title={'⚠️ 数据错误'}
                         headerExtraContent={
@@ -1083,14 +1099,14 @@ export default function App() {
             </div>
 
             {dashboard.state === DashboardState.Config || dashboard.state === DashboardState.Create ? (
-                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', borderLeft: pageTheme === 'DARK' ? '1px solid rgba(var(--semi-grey-7), 1)' : '1px solid var(--semi-color-border)' }}>
-                    <Tabs type="line" className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}>
+                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--divider)' }}>
+                    <Tabs type="line" className={pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')}>
                         <TabPane tab="数据配置" itemKey="0" style={{ paddingRight: '10px' }}>
                             <div
                                 className='config-panel'
                                 style={{
-                                    '--scrollbar-thumb-bg': pageTheme === 'DARK' ? ('#797B7F') : ('#BBBDBE'),
-                                    '--scrollbar-thumb-hover-bg': pageTheme === 'DARK' ? ('#BBBDBE') : ('#797B7F'),
+                                    '--scrollbar-thumb-bg': pageTheme === 'dark' ? ('#797B7F') : ('#BBBDBE'),
+                                    '--scrollbar-thumb-hover-bg': pageTheme === 'dark' ? ('#BBBDBE') : ('#797B7F'),
                                     height: 'calc(100vh - 120px)',
                                     paddingTop: '0px',
                                     paddingBottom: '70px'
@@ -1098,7 +1114,7 @@ export default function App() {
                             >
                                 {tableSource[0] && dataRange[0] && initFormValue?.tableId ? (
                                     <Form
-                                        className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}
+                                        className={pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')}
                                         layout='vertical'
                                         style={{ width: 300 }}
                                         onValueChange={handleConfigChange}
@@ -1106,7 +1122,7 @@ export default function App() {
                                         <Form.Slot label={<div style={{ fontWeight: 'initial' }}>数据源</div>}>
                                             <Select
                                                 onChange={tableOnChange}
-                                                dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                dropdownClassName={`${pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                                 dropdownStyle={{ width: '300px' }}
                                                 //field='tableId'
                                                 //label='数据源'
@@ -1124,7 +1140,7 @@ export default function App() {
                                         <Form.Slot label={<div style={{ fontWeight: 'initial' }}>数据范围</div>}>
                                             <Select
                                                 onChange={dataRangeOnChange}
-                                                dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                dropdownClassName={`${pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                                 dropdownStyle={{ width: '300px' }}
                                                 //field='dataRange'
                                                 //label='数据范围'
@@ -1141,7 +1157,7 @@ export default function App() {
                                         <Form.Slot label={<div style={{ fontWeight: 'initial' }}>Y轴</div>}>
                                             <Select
                                                 onChange={y_axisOnChange}
-                                                dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                dropdownClassName={`${pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                                 dropdownStyle={{ width: '300px' }}
                                                 //field='y_axis'
                                                 //label='Y轴'
@@ -1167,7 +1183,7 @@ export default function App() {
                                                         <div style={{ display: 'flex', alignContent: 'center' }}>
                                                             <Tooltip content={'修改当前所有字段的计算方法'} position='bottom'>
                                                                 <Select
-                                                                    dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                                    dropdownClassName={`${pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                                                     dropdownStyle={{ borderColor: 'var(--semi-color-border)' }}
                                                                     showArrow={false}
                                                                     size='small'
@@ -1202,7 +1218,7 @@ export default function App() {
                                                         showArrow={false}
                                                         prefix={
                                                             <Select
-                                                                dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                                dropdownClassName={`${pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                                                 dropdownStyle={{ width: '300px', marginLeft: -10 }}
                                                                 filter
                                                                 clickToHide
@@ -1228,7 +1244,7 @@ export default function App() {
                                                             <div style={{ display: 'flex', flexDirection: 'row', position: 'relative' }}>
                                                                 <Tooltip content={<div style={{ display: 'flex', textAlign: 'center' }}>仅在索引字段中有重复记录时有效<br />🤪</div>} position='topRight'>
                                                                     <Select
-                                                                        dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                                        dropdownClassName={`${pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                                                         dropdownStyle={{ borderColor: 'var(--semi-color-border)' }}
                                                                         prefix={''}
                                                                         showArrow={false}
@@ -1248,7 +1264,7 @@ export default function App() {
                                                                 </Tooltip>
 
                                                                 <Select
-                                                                    dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                                    dropdownClassName={`${pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                                                     dropdownStyle={{ borderColor: 'var(--semi-color-border)' }}
                                                                     prefix={''}
                                                                     onDropdownVisibleChange={fieldDropdownClick}
@@ -1275,7 +1291,7 @@ export default function App() {
                                         <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'flex-end' }}>
                                             <Tooltip content={'仅支持选择数字字段'} position='bottomRight'>
                                                 <Select
-                                                    dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                                    dropdownClassName={`${pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                                     searchPosition='dropdown'
                                                     filter
                                                     showArrow={false}
@@ -1303,8 +1319,8 @@ export default function App() {
                             <div
                                 className='config-panel'
                                 style={{
-                                    '--scrollbar-thumb-bg': pageTheme === 'DARK' ? ('#797B7F') : ('#BBBDBE'),
-                                    '--scrollbar-thumb-hover-bg': pageTheme === 'DARK' ? ('#BBBDBE') : ('#797B7F'),
+                                    '--scrollbar-thumb-bg': pageTheme === 'dark' ? ('#797B7F') : ('#BBBDBE'),
+                                    '--scrollbar-thumb-hover-bg': pageTheme === 'dark' ? ('#BBBDBE') : ('#797B7F'),
                                     height: 'calc(100vh - 120px)', // 确保内容区高度不超过100vh减去按钮区高度
                                     paddingTop: '0px',
                                     paddingBottom: '70px'
@@ -1312,7 +1328,7 @@ export default function App() {
                             >
                                 {tableSource[0] && dataRange[0] && initFormValue?.tableId ? (
                                     <Form
-                                        className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}
+                                        className={pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')}
                                         layout='vertical'
                                         style={{ width: 300 }}
                                         onValueChange={handleConfigChange}
@@ -1322,7 +1338,7 @@ export default function App() {
                                         </Divider>*/}
 
                                         <Form.Select
-                                            dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                            dropdownClassName={`${pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                             field='backgroundColor'
                                             label={<div style={{ fontWeight: 'initial' }}>图表背景</div>}
                                             initValue={initFormValue.backgroundColor}
@@ -1392,7 +1408,7 @@ export default function App() {
                                         </Divider>*/}
 
                                         <Form.Select
-                                            dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                            dropdownClassName={`${pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                             field='visualMapColor'
                                             label={<div style={{ fontWeight: 'initial' }}>映射颜色</div>}
                                             initValue={initFormValue.visualMapColor}
@@ -1449,7 +1465,7 @@ export default function App() {
 
                                         <Form.Select
                                             style={{ width: '100%' }}
-                                            dropdownClassName={`${pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
+                                            dropdownClassName={`${pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')} form-select`}
                                             field='autoRotate'
                                             label={<div style={{ fontWeight: 'initial' }}>自动旋转</div>}
                                             initValue={initFormValue.autoRotate}
@@ -1479,7 +1495,7 @@ export default function App() {
                         </TabPane>
                     </Tabs>
                     <div
-                        className={pageTheme === 'DARK' ? ('semi-always-dark') : ('semi-always-light')}
+                        className={pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')}
                         style={{
                             display: 'flex', justifyContent: 'flex-end',
                             position: 'absolute', right: '20px', bottom: '20px', height: '50px', flexShrink: '0', // 防止高度收缩
