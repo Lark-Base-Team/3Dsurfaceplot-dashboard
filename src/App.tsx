@@ -1,20 +1,8 @@
 import './App.css';
-import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import {
-    DashboardState, IDataRange,
-    AllDataRange, DATA_SOURCE_SORT_TYPE,
-    GroupMode, ORDER, SourceType,
-    bitable, dashboard, ICategory,
-    IConfig, IData, FieldType, ISeries,
-    Rollup, IDataCondition
-} from "@lark-base-open/js-sdk";
-import {
-    Form, Tag, Checkbox, Button, Popover, Empty, Tooltip,
-    Select, Switch, Notification, Slider, Dropdown,
-    Divider, InputNumber, Card, Typography, Tabs, TabPane,
-    Spin,
-} from '@douyinfe/semi-ui';
-import { IconMore, IconInfoCircle, IconPlusStroked, IconIssueStroked, IconPlus } from '@douyinfe/semi-icons';
+import { useCallback, useEffect, useState } from 'react';
+import { DashboardState, IDataRange, DATA_SOURCE_SORT_TYPE, GroupMode, ORDER, SourceType, bitable, dashboard, ICategory, FieldType, IDataCondition } from "@lark-base-open/js-sdk";
+import { Form,  Button, Tooltip, Select, Card, Typography, Tabs, TabPane, Spin } from '@douyinfe/semi-ui';
+import { IconMore, IconPlusStroked, IconIssueStroked } from '@douyinfe/semi-icons';
 import classnames from 'classnames'
 import * as echarts from 'echarts';
 import 'echarts-gl';
@@ -233,9 +221,8 @@ export default function App() {
     const [projection, setProjection] = useState(true);
     const [adjustableForm, setAdjustableForm] = useState([]);
 
-    const isCreate = dashboard.state === DashboardState.Create
-    /** 是否配置模式下 */
-    const isConfig = dashboard.state === DashboardState.Config || isCreate;
+    /** 是否配置模式或者创建模式下 */
+    const isConfig = dashboard.state === DashboardState.Config || dashboard.state === DashboardState.Create;
 
     const getTableList = useCallback(async () => {
         const tables = await bitable.base.getTableList();
@@ -309,7 +296,6 @@ export default function App() {
         });
         return () => {
             offConfigChange();
-            console.log('offConfigChange')
         }
     }, []);
 
@@ -345,11 +331,6 @@ export default function App() {
 
             if (dashboard.state === DashboardState.Create) {
                 const { initTableId, initTableName, maxRecordLength } = await getMaxRecordTable(tableList)
-                console.log('Table ID with max records:', initTableId);
-                console.log('tabel name:', initTableName);
-                console.log('Max record length:', maxRecordLength);
-
-                //const tableId = tableList[0]?.tableId;
                 const tableId = initTableId;
                 const tableRanges = (await getTableRange(tableId)).filter(obj => obj.type !== 'ALL')
                 setDataRange(tableRanges)
@@ -378,7 +359,6 @@ export default function App() {
                     .map((item, index) => {
                         return { ...item, calcu: 'MAX' }
                     })
-                //console.log('adjustableFormList', adjustableFormList)
                 setAdjustableForm(adjustableFormList)
 
                 const previewConfig = {
@@ -396,7 +376,6 @@ export default function App() {
                     series.push({ fieldId: item.fieldId, rollup: item.calcu })
                 })
                 previewConfig.series = series
-                //console.log(previewConfig)
                 const data = await dashboard.getPreviewData(previewConfig)
                 let _xyz_data = [], _x_index_name = [], _y_index_name = [];
                 let maxValue = -Infinity; // 初始化为负无穷大
@@ -461,19 +440,16 @@ export default function App() {
                 const dbConfig = await dashboard.getConfig();
                 const { dataConditions, customConfig } = dbConfig;
                 let config = customConfig.config as any
-                console.log(config)
                 let plotOptions = customConfig.plotOptions as any
                 setConfig(config)
                 setAdjustableForm(config.x_axis)
                 setPlotOptions(plotOptions)
-                console.log(plotOptions)
 
                 let { tableId, dataRange, groups, series } = dataConditions[0];
                 const tableRanges = (await getTableRange(tableId)).filter(obj => obj.type !== 'ALL')
                 setDataRange(tableRanges)
                 const viewCategories = await getViewCategories(tableId)
                 setCategories(viewCategories);
-                console.log(viewCategories)
                 previewConfig = {
                     tableId: tableId,
                     dataRange: dataRange,
@@ -504,27 +480,22 @@ export default function App() {
                 }
             }
             setInitFormValue(formInitValue)
-            console.log(formInitValue)
         }
 
-        if (dashboard.state === DashboardState.Config || dashboard.state === DashboardState.Create) {
+        if (isConfig) {
             init()
-        } else if (dashboard.state === DashboardState.View) {
-            // only after create
-
+        } else {
             async function initView() {
                 const dbConfig = await dashboard.getConfig();
                 const { customConfig, dataConditions } = dbConfig
                 let config = customConfig.config as any
                 let plotOptions = customConfig.plotOptions as any
-                console.log('view', config, plotOptions)
                 setConfig(config)
                 setAdjustableForm(config.x_axis)
                 setPlotOptions(plotOptions)
             }
             initView()
         }
-        console.log('init func, dashboard state: ', dashboard.state)
     }, [])
 
 
@@ -578,7 +549,6 @@ export default function App() {
                     }));
                 });
             })).then(() => {
-                console.log(xyz_data, x_index_name, y_index_name)
                 setPlotOptions(produce((draft) => {
                     draft.series[0].data = xyz_data
                     draft.xAxis3D.data = x_index_name
@@ -603,9 +573,6 @@ export default function App() {
             })
             previewConfig.series = series
             const data = await dashboard.getPreviewData(previewConfig)
-            //console.log('get preview data', data)
-            //console.log('y_axis', config.y_axis)
-            //console.log('adjustableForm', adjustableForm)
             let _xyz_data = [], _x_index_name = [], _y_index_name = [];
             let maxValue = -Infinity; // 初始化为负无穷大
             let minValue = Infinity; // 初始化为正无穷大
@@ -626,7 +593,6 @@ export default function App() {
                 }
 
             })
-            //console.log(_xyz_data, _x_index_name, _y_index_name)
             if (_x_index_name.length === 0 || _y_index_name.length === 0 || _xyz_data.length === 0) {
                 setDataSourceError(true)
             } else {
@@ -643,15 +609,10 @@ export default function App() {
         }
 
         if (config.tableId !== '' && config.dataRange) {
-            console.log('resetPlotOptions', config, plotOptions)
             resetPlotOptions(config.tableId, (config.dataRange as any as { viewId: string }).viewId)
         }
 
     }, [config.tableId, config.dataRange, config.y_axis, config.x_axis])
-
-    //useEffect(() => {
-    //    console.log('plotOptions', plotOptions)
-    //}, [plotOptions])
 
     useEffect(() => {
         setConfig(produce((draft) => {
@@ -660,7 +621,6 @@ export default function App() {
     }, [adjustableForm])
 
     const onClick = () => {
-        console.log(config)
         // 保存配置
         dashboard.saveConfig({
             customConfig: { config: config, plotOptions: plotOptions },
@@ -795,7 +755,6 @@ export default function App() {
                 draft.visualMap.inRange.color = visualMapColorList[Number(changedField.visualMapColor)].colors
             }))
         } else if (changedField.visualMapSwitch === true || changedField.visualMapSwitch === false) {
-            //console.log(plotOptions.series[0].data)
             setPlotOptions(produce((draft) => {
                 changedField.visualMapSwitch === false ?
                     (draft.visualMap.inRange = {
@@ -955,7 +914,6 @@ export default function App() {
         )
     };
     const addFieldButtonClick = (fieldId) => {
-        //console.log(fieldId)
         for (let field of categories) {
             if (field.fieldId === fieldId) {
                 setAdjustableForm([...adjustableForm, { fieldId: field.fieldId, fieldName: field.fieldName, fieldType: field.fieldType, calcu: 'MAX' }])
@@ -964,7 +922,6 @@ export default function App() {
         }
     };
     const calcuDropdownChange = (value, index) => {
-        //console.log(value, index)
         const updatedForm = adjustableForm.map((item, idx) => {
             if (idx === index) {
                 return { ...item, calcu: value };
@@ -974,7 +931,6 @@ export default function App() {
         setAdjustableForm(updatedForm);
     };
     const moveDropdownChange = (value, index) => {
-        //console.log(value, index, index === (adjustableForm.length - 1))
         if (value === 'DELET') {
             setAdjustableForm(prevItems => prevItems.filter((_, i) => i !== index));
         } if (value === 'UP') {
@@ -992,7 +948,6 @@ export default function App() {
         }
     };
     const fieldSelectChange = (value, index) => {
-        //console.log(value, index)
         const updatedForm = adjustableForm.map((item, idx) => {
             if (idx === index) {
                 const foundItem = categories.find(item => item.fieldId === value);

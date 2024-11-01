@@ -1,6 +1,6 @@
-import { useEffect, FC, useState } from 'react';
-import { Form, Button, Select, InputNumber, FormInstance } from 'antd';
-import { DashboardState, IDataRange, AllDataRange, DATA_SOURCE_SORT_TYPE, GroupMode, ORDER, SourceType, bitable, dashboard, ICategory, IConfig, IData, FieldType, ISeries, Rollup } from "@lark-base-open/js-sdk";
+import { FC } from 'react';
+import { Form, Button, Select, FormInstance } from 'antd';
+import { IDataRange,  SourceType, ICategory } from "@lark-base-open/js-sdk";
 import { Indicator } from './indicator';
 
 export interface ITableSource {
@@ -30,8 +30,6 @@ interface IConfigPanelProps {
 
 export const ConfigPanel: FC<IConfigPanelProps> = ({ initFormValue, tableSource, dataRange, categories, numberFieldList, handleConfigChange, onSaveConfig }) => {
   const [form] = Form.useForm();
-
-  window.__form__ = form;
 
   return (
     <div className='config-panel'>

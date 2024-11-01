@@ -7,7 +7,7 @@ interface RadarChartProps {
 }
 
 export function RadarChart({ dataSet }: RadarChartProps) {
-  const chartIns = useRef();
+  const chartIns = useRef<HTMLInputElement>(null);
 
   const indicatorSet = useMemo(() => {
     const set: { max: number, name: string }[] = [];
@@ -48,8 +48,8 @@ export function RadarChart({ dataSet }: RadarChartProps) {
     if (!el || !indicatorSet.length) return;
 
     const chart = ECharts.init(el);
-    chartIns.current = chart;
-    chartIns.current.setOption({
+    chartIns.current && (chartIns.current = chart as any);
+    chartIns.current && ((chartIns.current as unknown as (typeof chart))?.setOption({
       title: {
         text: ''
       },
@@ -67,10 +67,10 @@ export function RadarChart({ dataSet }: RadarChartProps) {
       series: [
         radarSeries
       ]
-    })
+    }));
 
     function resize() {
-      chartIns.current.resize();
+      (chartIns.current as unknown as ECharts.ECharts)?.resize();
     }
 
     window.addEventListener('resize', resize);
@@ -82,7 +82,7 @@ export function RadarChart({ dataSet }: RadarChartProps) {
 
 
   return (
-    <div className='radar-chart'>
+    <div className='radar-chart' ref={chartIns}>
     </div>
   )
 }
