@@ -8,6 +8,7 @@ import * as echarts from 'echarts';
 import 'echarts-gl';
 import ReactEcharts from 'echarts-for-react';
 import produce from 'immer';
+import { Banner } from '@douyinfe/semi-ui';
 
 
 interface IFormValues {
@@ -1012,7 +1013,7 @@ export default function App() {
         //console.log(event)
     }
 
-
+    const bannerTips = '受限于浏览器性能和插件的数据处理能力，推荐配置 10000 条以下的数据，超出可能存在不稳定的情况。';
 
     return (
         <main className={classnames({
@@ -1054,8 +1055,9 @@ export default function App() {
             </div>
 
             {dashboard.state === DashboardState.Config || dashboard.state === DashboardState.Create ? (
-                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--divider)' }}>
+                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--divider)', width: '340px' }}>
                     <Tabs type="line" className={pageTheme === 'dark' ? ('semi-always-dark') : ('semi-always-light')}>
+                        <Banner fullMode={false} type="warning" closeIcon={null} description={ bannerTips } />
                         <TabPane tab="数据配置" itemKey="0" style={{ paddingRight: '10px' }}>
                             <div
                                 className='config-panel'
@@ -1064,7 +1066,7 @@ export default function App() {
                                     '--scrollbar-thumb-hover-bg': pageTheme === 'dark' ? ('#BBBDBE') : ('#797B7F'),
                                     height: 'calc(100vh - 120px)',
                                     paddingTop: '0px',
-                                    paddingBottom: '70px'
+                                    paddingBottom: '90px'
                                 } as React.CSSProperties}
                             >
                                 {tableSource[0] && dataRange[0] && initFormValue?.tableId ? (
