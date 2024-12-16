@@ -1,5 +1,5 @@
 import './App.css';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useLayoutEffect } from 'react';
 import { DashboardState, IDataRange, DATA_SOURCE_SORT_TYPE, GroupMode, ORDER, SourceType, bitable, dashboard, ICategory, FieldType, IDataCondition } from "@lark-base-open/js-sdk";
 import { Form,  Button, Tooltip, Select, Card, Typography, Tabs, TabPane, Spin } from '@douyinfe/semi-ui';
 import { IconMore, IconPlusStroked, IconIssueStroked } from '@douyinfe/semi-icons';
@@ -279,13 +279,15 @@ export default function App() {
 
     const [bgColor, setBgColor] = useState('#ffffff');
     function useTheme() {
-        dashboard.onThemeChange((res) => {
-            updateTheme(res.data.theme.toLocaleLowerCase(), res.data.chartBgColor);
-            })
-
-        dashboard.getTheme().then((res) => {   
-            updateTheme(res.theme.toLocaleLowerCase(), res.chartBgColor);
-        })     
+        useLayoutEffect(() => {
+            dashboard.onThemeChange((res) => {
+                updateTheme(res.data.theme.toLocaleLowerCase(), res.data.chartBgColor);
+                })
+    
+            dashboard.getTheme().then((res) => {   
+                updateTheme(res.theme.toLocaleLowerCase(), res.chartBgColor);
+            })     
+        }, []);
     }
     useTheme();
 
