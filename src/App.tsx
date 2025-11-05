@@ -1,6 +1,6 @@
 import './App.css';
-import { useCallback, useEffect, useState, useLayoutEffect } from 'react';
-import { DashboardState, IDataRange, DATA_SOURCE_SORT_TYPE, GroupMode, ORDER, SourceType, bitable, dashboard, ICategory, FieldType, IDataCondition } from "@lark-base-open/js-sdk";
+import { useCallback, useEffect, useState, useLayoutEffect, useRef } from 'react';
+import { DashboardState, IDataRange, DATA_SOURCE_SORT_TYPE, GroupMode, ORDER, SourceType, bitable as bitableSdk, dashboard as dashboardSdk, ICategory, FieldType, IDataCondition, IDashboard, bridge, workspace } from "@lark-base-open/js-sdk";
 import { Form,  Button, Tooltip, Select, Card, Typography, Tabs, TabPane, Spin } from '@douyinfe/semi-ui';
 import { IconMore, IconPlusStroked, IconIssueStroked } from '@douyinfe/semi-icons';
 import classnames from 'classnames'
@@ -9,9 +9,11 @@ import 'echarts-gl';
 import ReactEcharts from 'echarts-for-react';
 import produce from 'immer';
 import { Banner } from '@douyinfe/semi-ui';
+import BaseSelector from './components/BaseSelector';
 
 
 interface IFormValues {
+    baseToken: string;
     tableId: any;
     dataRange: any;
     y_axis: any;
@@ -129,6 +131,7 @@ export default function App() {
 
     const [pageTheme, setPageTheme] = useState('light');
     const [config, setConfig] = useState({
+        baseToken: '',
         tableId: '',
         dataRange: { type: 'ALL' },
         y_axis: String,
@@ -221,12 +224,73 @@ export default function App() {
     })
     const [projection, setProjection] = useState(true);
     const [adjustableForm, setAdjustableForm] = useState([]);
+    const [isMultipleBase, setIsMultipleBase] = useState<boolean | undefined>(
+        undefined
+    );
+    
+    const [dashboard, setDashboard] = useState<IDashboard>(dashboardSdk);
+    const [bitable, setBitable] = useState<typeof bitableSdk | null>(bitableSdk);
+    const baseHasChanged = useRef(false);
+    const dashboardRef = useRef<IDashboard>(dashboardSdk);
+    const bitableRef = useRef<typeof bitableSdk | null>(bitableSdk);
+
+    useEffect(() => {
+    (async () => {
+      const env = await bridge.getEnv();
+      setIsMultipleBase(env.needChangeBase ?? false);
+    })();
+  }, []);
+
+   useEffect(() => {
+    (async () => {
+      if (isMultipleBase && !initFormValue?.baseToken) {
+        setBitable(null);
+        return;
+      }
+      const realBitable = isMultipleBase
+        ? await workspace.getBitable(initFormValue.baseToken)
+        : bitableSdk;
+      setBitable(realBitable);
+      bitableRef.current = realBitable;
+    })();
+  }, [initFormValue?.baseToken, isMultipleBase]);
+
+  useEffect(() => {
+    (async () => {
+      if (!isMultipleBase || !initFormValue?.baseToken) {
+        return;
+      }
+      const workspaceBitable = await workspace.getBitable(
+        initFormValue.baseToken!
+      );
+      const workspaceDashboard = workspaceBitable?.dashboard || dashboardSdk;
+      setDashboard(workspaceDashboard);
+      dashboardRef.current = workspaceDashboard;
+    })();
+  }, [initFormValue?.baseToken, isMultipleBase]);
 
     /** 是否配置模式或者创建模式下 */
     const isConfig = dashboard.state === DashboardState.Config || dashboard.state === DashboardState.Create;
 
+    const getBaseToken = useCallback(async () => {
+        if (!isMultipleBase) {
+            return initFormValue?.baseToken || "";
+        }
+        const baseList = await workspace.getBaseList({
+        query: "",
+        page: {
+            cursor: "",
+        },
+        });
+        const initialBaseToken = baseList?.base_list?.[0]?.token || "";
+        return initialBaseToken;
+    }, [isMultipleBase]);
+
     const getTableList = useCallback(async () => {
-        const tables = await bitable.base.getTableList();
+        if (!bitableRef.current) {
+            return [];
+        }
+        const tables = await bitableRef.current.base.getTableList();
         return await Promise.all(tables.map(async table => {
             const name = await table.getName();
             return {
@@ -234,17 +298,17 @@ export default function App() {
                 tableName: name
             }
         }))
-    }, [])
+    }, [initFormValue?.baseToken])
 
     const getTableRange = useCallback((tableId: string) => {
         return dashboard.getTableDataRange(tableId);
-    }, [])
+    }, [dashboard])
 
     const getCategories = useCallback((tableId: string) => {
         return dashboard.getCategories(tableId);
     }, [])
     const getViewCategories = async (tableId: string) => {
-        const table = await bitable.base.getTableById(tableId);
+        const table = await bitableRef.current.base.getTableById(tableId);
         const viewMeta = await table.getViewMetaList()
         const defaultView = await table.getViewById(viewMeta[0].id)
         const fieldMeta = await defaultView.getFieldMetaList();
@@ -300,7 +364,7 @@ export default function App() {
         return () => {
             offConfigChange();
         }
-    }, []);
+    }, [dashboard]);
 
     function getMaxRecordTable(tableList: { tableId: string; tableName: string; }[]) {
         return new Promise<{ initTableId: string; initTableName: string; maxRecordLength: number; }>(async (resolve, reject) => {
@@ -309,7 +373,7 @@ export default function App() {
                 let initTableId = '';
                 let initTableName = '';
                 for (let { tableId, tableName } of tableList) {
-                    const t = await bitable.base.getTableById(tableId);
+                    const t = await bitableRef.current.base.getTableById(tableId);
                     const recordList = await t.getRecordIdList();
                     if (recordList.length > maxRecordLength) {
                         maxRecordLength = recordList.length;
@@ -324,8 +388,107 @@ export default function App() {
         });
     }
 
+    const initTableConfig = useCallback(async () => {
+        const tableList = await getTableList();
+        setTableSource(tableList);
+        
+        const { initTableId } = await getMaxRecordTable(tableList)
+        const tableId = initTableId;
+        const tableRanges = (await getTableRange(tableId)).filter(obj => obj.type !== 'ALL')
+        setDataRange(tableRanges)
+
+        const table = await bitable.base.getTableById(tableId);
+        const viewMeta = await table.getViewMetaList()
+        const defaultView = await table.getViewById(viewMeta[0].id)
+        const fieldMeta = await defaultView.getFieldMetaList();
+        const visibleFieldIdList = await defaultView.getVisibleFieldIdList();
+        let visibleFieldMeta = []
+        for (let i = 0; i <= fieldMeta.length - 1; i++) {
+            if (visibleFieldIdList.includes(fieldMeta[i].id)) {
+                visibleFieldMeta.push({
+                    fieldId: fieldMeta[i].id,
+                    fieldName: fieldMeta[i].name,
+                    fieldType: fieldMeta[i].type
+                })
+            }
+        }
+        setCategories(visibleFieldMeta)
+
+        const adjustableFormList = visibleFieldMeta
+            .filter((item, index) => index !== 0)
+            .filter((item, index) => supportedFieldType.includes(item.fieldType))
+            .map((item, index) => {
+                return { ...item, calcu: 'MAX' }
+            })
+        setAdjustableForm(adjustableFormList)
+
+        const previewConfig = {
+            tableId: tableId,
+            dataRange: tableRanges[0],
+            series: [],//[{fieldId:item.fieldId, rollup: Rollup.SUM}],
+            groups: [{
+                fieldId: visibleFieldIdList[0],
+                mode: GroupMode.INTEGRATED,//GroupMode.ENUMERATED,//
+                sort: { order: ORDER.ASCENDING, sortType: DATA_SOURCE_SORT_TYPE.VIEW }
+            }]
+        }
+        let series = []
+        adjustableFormList.map((item, index) => {
+            series.push({ fieldId: item.fieldId, rollup: item.calcu })
+        })
+        previewConfig.series = series
+        const data = await dashboard.getPreviewData(previewConfig)
+        let _xyz_data = [], _x_index_name = [], _y_index_name = [];
+        let maxValue = -Infinity; // 初始化为负无穷大
+        let minValue = Infinity; // 初始化为正无穷大
+        data.map((record, index) => {
+            if (index !== 0) {
+                _y_index_name.push(record[0].text)
+                record.map((item, idx) => {
+                    if (idx !== 0) {
+                        _xyz_data.push([idx - 1, index - 1, item.value])
+                        if (Number(item.value) > maxValue) { maxValue = Number(item.value) }
+                        if (Number(item.value) < minValue) { minValue = Number(item.value) }
+                    }
+                })
+            } else if (index === 0) {
+                record.map((item, idx) => {
+                    idx !== 0 ? (_x_index_name.push(item.text)) : (null)
+                })
+            }
+
+        })
+        if (_x_index_name.length === 0 || _y_index_name.length === 0 || _xyz_data.length === 0) {
+            setDataSourceError(true)
+        } else {
+            setPlotOptions(produce((draft) => {
+                draft.visualMap.max = maxValue + maxValue * 0.1
+                draft.visualMap.min = minValue - minValue * 0.1
+                draft.series[0].data = _xyz_data
+                draft.xAxis3D.data = _x_index_name
+                draft.yAxis3D.data = _y_index_name
+            }))
+        }
+
+        setConfig((prevConfig) => ({
+            ...prevConfig,
+            tableId: tableId,
+            dataRange: tableRanges[0],
+            y_axis: visibleFieldMeta[0]?.fieldId,
+            x_axis: adjustableFormList
+        }))
+        setInitFormValue(prev => ({ ...prev, tableId: tableId, y_axis: visibleFieldMeta[0]?.fieldId }))
+    }, [dashboard, getTableList, bitable])
+
+    useEffect(() => {
+        if(!baseHasChanged.current) return;
+        initTableConfig()
+    }, [bitable])
+
     useEffect(() => {
         async function init() {
+            if(isMultipleBase === undefined) return;
+            
             const tableList = await getTableList();
             setTableSource(tableList);
 
@@ -333,12 +496,13 @@ export default function App() {
             let formInitValue: IFormValues = {} as IFormValues
 
             if (dashboard.state === DashboardState.Create) {
+                const baseToken = await getBaseToken();
                 const { initTableId, initTableName, maxRecordLength } = await getMaxRecordTable(tableList)
                 const tableId = initTableId;
                 const tableRanges = (await getTableRange(tableId)).filter(obj => obj.type !== 'ALL')
                 setDataRange(tableRanges)
 
-                const table = await bitable.base.getTableById(tableId);
+                const table = await bitableRef.current.base.getTableById(tableId);
                 const viewMeta = await table.getViewMetaList()
                 const defaultView = await table.getViewById(viewMeta[0].id)
                 const fieldMeta = await defaultView.getFieldMetaList();
@@ -365,6 +529,7 @@ export default function App() {
                 setAdjustableForm(adjustableFormList)
 
                 const previewConfig = {
+                    baseToken: isMultipleBase ? baseToken : undefined,
                     tableId: tableId,
                     dataRange: tableRanges[0],
                     series: [],//[{fieldId:item.fieldId, rollup: Rollup.SUM}],
@@ -415,6 +580,7 @@ export default function App() {
 
                 formInitValue = {
                     ...formInitValue,
+                    baseToken: isMultipleBase ? baseToken : undefined,
                     tableId: tableId,
                     dataRange: tableRanges[0],
                     y_axis: visibleFieldMeta[0]?.fieldId,
@@ -448,12 +614,13 @@ export default function App() {
                 setAdjustableForm(config.x_axis)
                 setPlotOptions(plotOptions)
 
-                let { tableId, dataRange, groups, series } = dataConditions[0];
+                let { tableId, dataRange, groups, series, baseToken } = dataConditions[0];
                 const tableRanges = (await getTableRange(tableId)).filter(obj => obj.type !== 'ALL')
                 setDataRange(tableRanges)
                 const viewCategories = await getViewCategories(tableId)
                 setCategories(viewCategories);
                 previewConfig = {
+                    baseToken,
                     tableId: tableId,
                     dataRange: dataRange,
                     series: series,
@@ -461,6 +628,7 @@ export default function App() {
                 }
                 formInitValue = {
                     ...formInitValue,
+                    baseToken,
                     tableId: tableId,
                     dataRange: typeof (dataRange) === 'string' ?
                         (JSON.parse(dataRange)) : (dataRange),
@@ -499,12 +667,12 @@ export default function App() {
             }
             initView()
         }
-    }, [])
+    }, [isMultipleBase])
 
 
     useEffect(() => {
         async function resetPlotOptions(tableId: string, viewId: string) {
-            /*
+             /*
             const table = await bitable.base.getTableById(tableId);
             //const viewMeta = await table.getViewMetaList()
             const defaultView = await table.getViewById(viewId)
@@ -615,7 +783,7 @@ export default function App() {
             resetPlotOptions(config.tableId, (config.dataRange as any as { viewId: string }).viewId)
         }
 
-    }, [config.tableId, config.dataRange, config.y_axis, config.x_axis])
+    }, [config.tableId, config.dataRange, config.y_axis, config.x_axis, dashboard])
 
     useEffect(() => {
         setConfig(produce((draft) => {
@@ -628,6 +796,7 @@ export default function App() {
         dashboard.saveConfig({
             customConfig: { config: config, plotOptions: plotOptions },
             dataConditions: [{
+                baseToken: isMultipleBase ? config.baseToken : undefined,
                 tableId: config.tableId,
                 dataRange: config.dataRange,
                 series: 'COUNTA',
@@ -644,6 +813,16 @@ export default function App() {
             }],
         } as any)
     };
+
+    const handleBaseChange = (baseToken: string) => {
+        setInitFormValue(produce((draft) => {
+            draft.baseToken = baseToken
+        }))
+         setConfig(produce((draft) => {
+            draft.baseToken = baseToken
+        }))
+        baseHasChanged.current = true;
+    }
 
     const tableOnChange = async (tableId) => {
         setDataSourceError(false)
@@ -673,7 +852,7 @@ export default function App() {
     };
     const dataRangeOnChange = async (dataRange) => {
         dataRange = JSON.parse(dataRange)
-        const table = await bitable.base.getTableById(config.tableId);
+        const table = await bitableRef.current.base.getTableById(config.tableId);
         const defaultView = await table.getViewById(dataRange.viewId)
         const fieldMeta = await defaultView.getFieldMetaList();
         const visibleFieldIdList = await defaultView.getVisibleFieldIdList();
@@ -1078,6 +1257,12 @@ export default function App() {
                                         style={{ width: 300 }}
                                         onValueChange={handleConfigChange}
                                     >
+                                        {isMultipleBase && 
+                                            <BaseSelector 
+                                            baseToken={initFormValue.baseToken} 
+                                            onChange={handleBaseChange} 
+                                            />
+                                        }
                                         <Form.Slot label={<div style={{ fontWeight: 'initial' }}>数据源</div>}>
                                             <Select
                                                 onChange={tableOnChange}
