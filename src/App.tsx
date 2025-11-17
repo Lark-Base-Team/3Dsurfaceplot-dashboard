@@ -128,6 +128,7 @@ export default function App() {
     const [categories, setCategories] = useState<ICategory[]>([]);
     const [autoRotateState, setAutoRotateState] = useState('off');
     const [dataSourceError, setDataSourceError] = useState(false);
+    const [tableLoading, setTableLoading] = useState(false);
 
     const [pageTheme, setPageTheme] = useState('light');
     const [config, setConfig] = useState({
@@ -229,7 +230,6 @@ export default function App() {
     );
     
     const [dashboard, setDashboard] = useState<IDashboard>(dashboardSdk);
-    const [bitable, setBitable] = useState<typeof bitableSdk | null>(bitableSdk);
     const baseHasChanged = useRef(false);
     const dashboardRef = useRef<IDashboard>(dashboardSdk);
     const bitableRef = useRef<typeof bitableSdk | null>(bitableSdk);
@@ -241,19 +241,26 @@ export default function App() {
     })();
   }, []);
 
-   useEffect(() => {
-    (async () => {
-      if (isMultipleBase && !initFormValue?.baseToken) {
-        setBitable(null);
+  const getBitable = useCallback(async (baseToken?: string) => {
+    if (isMultipleBase === undefined) {
+          return;
+        }
+      if (isMultipleBase && !baseToken) {
         return;
       }
+
       const realBitable = isMultipleBase
-        ? await workspace.getBitable(initFormValue.baseToken)
+        ? await workspace.getBitable(baseToken)
         : bitableSdk;
-      setBitable(realBitable);
       bitableRef.current = realBitable;
+      return realBitable;
+  }, [isMultipleBase]);
+
+   useEffect(() => {
+    (async () => {
+      await getBitable(initFormValue?.baseToken);
     })();
-  }, [initFormValue?.baseToken, isMultipleBase]);
+  }, [initFormValue?.baseToken, getBitable]);
 
   useEffect(() => {
     (async () => {
@@ -286,11 +293,11 @@ export default function App() {
         return initialBaseToken;
     }, [isMultipleBase]);
 
-    const getTableList = useCallback(async () => {
-        if (!bitableRef.current) {
+    const getTableList = useCallback(async (bitable: typeof bitableSdk) => {
+        if (!bitable) {
             return [];
         }
-        const tables = await bitableRef.current.base.getTableList();
+        const tables = await bitable.base.getTableList();
         return await Promise.all(tables.map(async table => {
             const name = await table.getName();
             return {
@@ -298,11 +305,11 @@ export default function App() {
                 tableName: name
             }
         }))
-    }, [initFormValue?.baseToken])
+    }, [])
 
     const getTableRange = useCallback((tableId: string) => {
-        return dashboard.getTableDataRange(tableId);
-    }, [dashboard])
+        return dashboardRef.current.getTableDataRange(tableId);
+    }, [])
 
     const getCategories = useCallback((tableId: string) => {
         return dashboard.getCategories(tableId);
@@ -388,8 +395,10 @@ export default function App() {
         });
     }
 
-    const initTableConfig = useCallback(async () => {
-        const tableList = await getTableList();
+    const initTableConfig = useCallback(async (baseToken: string) => {
+        setTableLoading(true);
+        const bitable = await getBitable(baseToken);
+        const tableList = await getTableList(bitable);
         setTableSource(tableList);
         
         const { initTableId } = await getMaxRecordTable(tableList)
@@ -437,7 +446,7 @@ export default function App() {
             series.push({ fieldId: item.fieldId, rollup: item.calcu })
         })
         previewConfig.series = series
-        const data = await dashboard.getPreviewData(previewConfig)
+        const data = await dashboardRef.current.getPreviewData(previewConfig)
         let _xyz_data = [], _x_index_name = [], _y_index_name = [];
         let maxValue = -Infinity; // 初始化为负无穷大
         let minValue = Infinity; // 初始化为正无穷大
@@ -477,113 +486,32 @@ export default function App() {
             y_axis: visibleFieldMeta[0]?.fieldId,
             x_axis: adjustableFormList
         }))
-        setInitFormValue(prev => ({ ...prev, tableId: tableId, y_axis: visibleFieldMeta[0]?.fieldId }))
-    }, [dashboard, getTableList, bitable])
+        setInitFormValue(prev => ({ 
+            ...prev, 
+            dataRange: tableRanges[0],
+            tableId: tableId, 
+            y_axis: visibleFieldMeta[0]?.fieldId 
+        }))
+        setTableLoading(false);
+    }, [isMultipleBase])
 
     useEffect(() => {
         if(!baseHasChanged.current) return;
-        initTableConfig()
-    }, [bitable])
+        initTableConfig(initFormValue?.baseToken)
+    }, [initFormValue?.baseToken])
 
     useEffect(() => {
         async function init() {
             if(isMultipleBase === undefined) return;
-            
-            const tableList = await getTableList();
-            setTableSource(tableList);
 
             let previewConfig: IDataCondition = {} as IDataCondition
             let formInitValue: IFormValues = {} as IFormValues
 
             if (dashboard.state === DashboardState.Create) {
                 const baseToken = await getBaseToken();
-                const { initTableId, initTableName, maxRecordLength } = await getMaxRecordTable(tableList)
-                const tableId = initTableId;
-                const tableRanges = (await getTableRange(tableId)).filter(obj => obj.type !== 'ALL')
-                setDataRange(tableRanges)
-
-                const table = await bitableRef.current.base.getTableById(tableId);
-                const viewMeta = await table.getViewMetaList()
-                const defaultView = await table.getViewById(viewMeta[0].id)
-                const fieldMeta = await defaultView.getFieldMetaList();
-                const visibleRecordIdList = await defaultView.getVisibleRecordIdList();
-                const visibleFieldIdList = await defaultView.getVisibleFieldIdList();
-                let visibleFieldMeta = []
-                for (let i = 0; i <= fieldMeta.length - 1; i++) {
-                    if (visibleFieldIdList.includes(fieldMeta[i].id)) {
-                        visibleFieldMeta.push({
-                            fieldId: fieldMeta[i].id,
-                            fieldName: fieldMeta[i].name,
-                            fieldType: fieldMeta[i].type
-                        })
-                    }
-                }
-                setCategories(visibleFieldMeta)
-
-                const adjustableFormList = visibleFieldMeta
-                    .filter((item, index) => index !== 0)
-                    .filter((item, index) => supportedFieldType.includes(item.fieldType))
-                    .map((item, index) => {
-                        return { ...item, calcu: 'MAX' }
-                    })
-                setAdjustableForm(adjustableFormList)
-
-                const previewConfig = {
-                    baseToken: isMultipleBase ? baseToken : undefined,
-                    tableId: tableId,
-                    dataRange: tableRanges[0],
-                    series: [],//[{fieldId:item.fieldId, rollup: Rollup.SUM}],
-                    groups: [{
-                        fieldId: visibleFieldIdList[0],
-                        mode: GroupMode.INTEGRATED,//GroupMode.ENUMERATED,//
-                        sort: { order: ORDER.ASCENDING, sortType: DATA_SOURCE_SORT_TYPE.VIEW }
-                    }]
-                }
-                let series = []
-                adjustableFormList.map((item, index) => {
-                    series.push({ fieldId: item.fieldId, rollup: item.calcu })
-                })
-                previewConfig.series = series
-                const data = await dashboard.getPreviewData(previewConfig)
-                let _xyz_data = [], _x_index_name = [], _y_index_name = [];
-                let maxValue = -Infinity; // 初始化为负无穷大
-                let minValue = Infinity; // 初始化为正无穷大
-                data.map((record, index) => {
-                    if (index !== 0) {
-                        _y_index_name.push(record[0].text)
-                        record.map((item, idx) => {
-                            if (idx !== 0) {
-                                _xyz_data.push([idx - 1, index - 1, item.value])
-                                if (Number(item.value) > maxValue) { maxValue = Number(item.value) }
-                                if (Number(item.value) < minValue) { minValue = Number(item.value) }
-                            }
-                        })
-                    } else if (index === 0) {
-                        record.map((item, idx) => {
-                            idx !== 0 ? (_x_index_name.push(item.text)) : (null)
-                        })
-                    }
-
-                })
-                if (_x_index_name.length === 0 || _y_index_name.length === 0 || _xyz_data.length === 0) {
-                    setDataSourceError(true)
-                } else {
-                    setPlotOptions(produce((draft) => {
-                        draft.visualMap.max = maxValue + maxValue * 0.1
-                        draft.visualMap.min = minValue - minValue * 0.1
-                        draft.series[0].data = _xyz_data
-                        draft.xAxis3D.data = _x_index_name
-                        draft.yAxis3D.data = _y_index_name
-                    }))
-                }
-
-
-                formInitValue = {
+                 formInitValue = {
                     ...formInitValue,
                     baseToken: isMultipleBase ? baseToken : undefined,
-                    tableId: tableId,
-                    dataRange: tableRanges[0],
-                    y_axis: visibleFieldMeta[0]?.fieldId,
                     rotateSensitivity: 15,
                     autoRotate: 'off',
                     autoRotateSpeed: 10,
@@ -597,14 +525,8 @@ export default function App() {
                     visualMapItemHeight: 300,
                     backgroundColor: 'transparent'
                 }
-                setConfig((prevConfig) => ({
-                    ...prevConfig,
-                    tableId: tableId,
-                    dataRange: tableRanges[0],
-                    y_axis: visibleFieldMeta[0]?.fieldId,
-                    x_axis: adjustableFormList
-                }))
-
+                setInitFormValue(formInitValue);
+                await initTableConfig(baseToken);
             } else {
                 const dbConfig = await dashboard.getConfig();
                 const { dataConditions, customConfig } = dbConfig;
@@ -615,6 +537,9 @@ export default function App() {
                 setPlotOptions(plotOptions)
 
                 let { tableId, dataRange, groups, series, baseToken } = dataConditions[0];
+                const bitable = await getBitable(baseToken);
+                const tableList = await getTableList(bitable);
+                setTableSource(tableList);
                 const tableRanges = (await getTableRange(tableId)).filter(obj => obj.type !== 'ALL')
                 setDataRange(tableRanges)
                 const viewCategories = await getViewCategories(tableId)
@@ -743,7 +668,7 @@ export default function App() {
                 series.push({ fieldId: item.fieldId, rollup: item.calcu })
             })
             previewConfig.series = series
-            const data = await dashboard.getPreviewData(previewConfig)
+            const data = await dashboardRef.current.getPreviewData(previewConfig)
             let _xyz_data = [], _x_index_name = [], _y_index_name = [];
             let maxValue = -Infinity; // 初始化为负无穷大
             let minValue = Infinity; // 初始化为正无穷大
@@ -783,7 +708,7 @@ export default function App() {
             resetPlotOptions(config.tableId, (config.dataRange as any as { viewId: string }).viewId)
         }
 
-    }, [config.tableId, config.dataRange, config.y_axis, config.x_axis, dashboard])
+    }, [config.tableId, config.dataRange, config.y_axis, config.x_axis])
 
     useEffect(() => {
         setConfig(produce((draft) => {
@@ -1276,6 +1201,8 @@ export default function App() {
                                                 searchPosition='dropdown'
                                                 filter
                                                 clickToHide
+                                                disabled={tableLoading}
+                                                renderSelectedItem={tableLoading ? () => <Spin /> : undefined}
                                             >
                                                 {tableSource.map(source => renderCustomOption_tableSVG(source))}
                                             </Select>
@@ -1294,6 +1221,8 @@ export default function App() {
                                                 searchPosition='dropdown'
                                                 filter
                                                 clickToHide
+                                                disabled={tableLoading}
+                                                renderSelectedItem={tableLoading ? () => <Spin /> : undefined}
                                             >
                                                 {dataRange.map(view => renderCustomOption_tableSVG_dataRange(view))}2
                                             </Select>
@@ -1311,6 +1240,8 @@ export default function App() {
                                                 searchPosition='dropdown'
                                                 filter
                                                 clickToHide
+                                                disabled={tableLoading}
+                                                renderSelectedItem={tableLoading ? () => <Spin /> : undefined}
                                             >
                                                 {categories.map(field => renderCustomOption_col(field))}
                                             </Select>
@@ -1336,6 +1267,8 @@ export default function App() {
                                                                     clickToHide
                                                                     triggerRender={triggerRender3}
                                                                     onChange={allFieldCalcuChange}
+                                                                    disabled={tableLoading}
+                                                                    renderSelectedItem={tableLoading ? () => <Spin /> : undefined}
                                                                 >
                                                                     <Select.Option value={'SUM'}>求和</Select.Option>
                                                                     <Select.Option value={'MAX'}>最大值</Select.Option>
