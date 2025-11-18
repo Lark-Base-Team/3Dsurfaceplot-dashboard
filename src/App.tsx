@@ -486,8 +486,8 @@ export default function App() {
             y_axis: visibleFieldMeta[0]?.fieldId,
             x_axis: adjustableFormList
         }))
-        setInitFormValue(prev => ({ 
-            ...prev, 
+        setInitFormValue(prev => ({
+             ...prev, 
             dataRange: tableRanges[0],
             tableId: tableId, 
             y_axis: visibleFieldMeta[0]?.fieldId 
@@ -574,8 +574,8 @@ export default function App() {
                         (plotOptions.grid3D.environment === '#000' ? ('black') : ('example')) :
                         ('transparent')
                 }
+                setInitFormValue(formInitValue)
             }
-            setInitFormValue(formInitValue)
         }
 
         if (isConfig) {
@@ -1120,7 +1120,7 @@ export default function App() {
     }
 
     const bannerTips = '受限于浏览器性能和插件的数据处理能力，推荐配置 10000 条以下的数据，超出可能存在不稳定的情况。';
-
+    
     return (
         <main className={classnames({
             'main-config': dashboard.state === DashboardState.Config || dashboard.state === DashboardState.Create,
