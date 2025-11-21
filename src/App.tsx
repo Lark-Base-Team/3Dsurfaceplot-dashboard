@@ -481,6 +481,7 @@ export default function App() {
 
         setConfig((prevConfig) => ({
             ...prevConfig,
+            baseToken,
             tableId: tableId,
             dataRange: tableRanges[0],
             y_axis: visibleFieldMeta[0]?.fieldId,
